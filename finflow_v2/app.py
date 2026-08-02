@@ -209,6 +209,10 @@ class PasswordReset(BaseModel):
 
 
 def ensure_user_columns():
+    # Skip for PostgreSQL (uses fresh schema from create_all)
+    if 'postgresql' in str(db.engine.url):
+        return
+    
     with db.engine.begin() as conn:
         result = conn.execute(text('PRAGMA table_info("user")'))
         existing = {row[1] for row in result.fetchall()}
@@ -234,6 +238,10 @@ def ensure_user_columns():
 
 
 def ensure_account_columns():
+    # Skip for PostgreSQL (uses fresh schema from create_all)
+    if 'postgresql' in str(db.engine.url):
+        return
+    
     with db.engine.begin() as conn:
         result = conn.execute(text('PRAGMA table_info("account")'))
         existing = {row[1] for row in result.fetchall()}
@@ -261,6 +269,10 @@ def ensure_account_columns():
 
 
 def ensure_transaction_columns():
+    # Skip for PostgreSQL (uses fresh schema from create_all)
+    if 'postgresql' in str(db.engine.url):
+        return
+    
     with db.engine.begin() as conn:
         result = conn.execute(text('PRAGMA table_info("transaction")'))
         existing = {row[1] for row in result.fetchall()}
@@ -279,6 +291,10 @@ def ensure_transaction_columns():
             print('Updated transaction table schema with new columns:', ', '.join([cmd.split()[5] for cmd in alter_commands]))
 
 def ensure_denomination_table():
+    # Skip for PostgreSQL (uses fresh schema from create_all)
+    if 'postgresql' in str(db.engine.url):
+        return
+    
     with db.engine.begin() as conn:
         # Check if denomination table exists
         result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='denomination'"))
