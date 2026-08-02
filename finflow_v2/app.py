@@ -1780,12 +1780,12 @@ def admin_panel():
     if request.method == 'POST':
         password = request.form.get('password', '')
         if password != ADMIN_PASSWORD:
-            return render_template('admin.html', error='Invalid password'), 401
+            return render_template('admin.html', login_error='Invalid password'), 401
         session['admin_logged_in'] = True
         return redirect(url_for('admin_panel'))
     
     if not session.get('admin_logged_in'):
-        return render_template('admin.html', error=None)
+        return render_template('admin.html', login_error=None)
     
     users = User.query.all()
     accounts = Account.query.all()

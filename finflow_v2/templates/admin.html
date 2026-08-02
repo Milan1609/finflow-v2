@@ -49,7 +49,7 @@
         {% if not logged_in %}
             <div class="login-box">
                 <h2>🔐 Admin Panel</h2>
-                {% if error %}<div class="error">{{ error }}</div>{% endif %}
+                {% if login_error %}<div class="error">{{ login_error }}</div>{% endif %}
                 <form method="POST">
                     <label>Password:</label>
                     <input type="password" name="password" placeholder="Enter admin password" required autofocus>
