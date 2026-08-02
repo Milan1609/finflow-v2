@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta, timezone
-from sqlalchemy import func, event
+from sqlalchemy import func, event, extract
 from functools import wraps
 from sqlalchemy import text
 from markupsafe import Markup
@@ -929,10 +929,10 @@ def dashboard():
         selected_month = today.month
     selected_category_id = request.args.get('category_id', type=int)
 
-    year_options = [int(row[0]) for row in db.session.query(func.strftime('%Y', Transaction.date)).filter(
+    year_options = [row[0] for row in db.session.query(extract('year', Transaction.date)).filter(
         Transaction.user_id==uid,
         Transaction.is_deleted==False
-    ).group_by(func.strftime('%Y', Transaction.date)).order_by(func.strftime('%Y', Transaction.date).desc()).all()]
+    ).group_by(extract('year', Transaction.date)).order_by(extract('year', Transaction.date).desc()).all()]
     if not year_options:
         year_options = [today.year]
     elif selected_year not in year_options:
@@ -956,9 +956,9 @@ def dashboard():
 
     category_filter = [Transaction.user_id==uid, Transaction.is_deleted==False]
     if selected_year:
-        category_filter.append(func.strftime('%Y', Transaction.date) == str(selected_year))
+        category_filter.append(extract('year', Transaction.date) == selected_year)
     if selected_month and selected_month != 0:
-        category_filter.append(func.strftime('%m', Transaction.date) == f"{selected_month:02d}")
+        category_filter.append(extract('month', Transaction.date) == selected_month)
     if selected_category_id:
         category_filter.append(Transaction.category_id == selected_category_id)
 
@@ -980,15 +980,15 @@ def dashboard():
             Transaction.txn_type=='Income',
             Transaction.date==d,
             *([Transaction.user_id==uid, Transaction.is_deleted==False] + ([Transaction.category_id == selected_category_id] if selected_category_id else []) + (
-                [func.strftime('%Y', Transaction.date) == str(selected_year)] if selected_year else []) + (
-                [func.strftime('%m', Transaction.date) == f"{selected_month:02d}"] if selected_month and selected_month != 0 else []))
+                [extract('year', Transaction.date) == selected_year] if selected_year else []) + (
+                [extract('month', Transaction.date) == selected_month] if selected_month and selected_month != 0 else []))
         ).scalar() or 0
         exp = db.session.query(func.sum(Transaction.amount)).filter(
             Transaction.txn_type=='Expense',
             Transaction.date==d,
             *([Transaction.user_id==uid, Transaction.is_deleted==False] + ([Transaction.category_id == selected_category_id] if selected_category_id else []) + (
-                [func.strftime('%Y', Transaction.date) == str(selected_year)] if selected_year else []) + (
-                [func.strftime('%m', Transaction.date) == f"{selected_month:02d}"] if selected_month and selected_month != 0 else []))
+                [extract('year', Transaction.date) == selected_year] if selected_year else []) + (
+                [extract('month', Transaction.date) == selected_month] if selected_month and selected_month != 0 else []))
         ).scalar() or 0
         daily.append({'date': d.strftime('%d %b'), 'income': round(inc,2), 'expense': round(exp,2)})
 
@@ -1017,9 +1017,9 @@ def dashboard():
         Category.category_type.in_(['Income', 'Expense'])
     )
     if selected_year:
-        category_data = category_data.filter(func.strftime('%Y', Transaction.date) == str(selected_year))
+        category_data = category_data.filter(extract('year', Transaction.date) == selected_year)
     if selected_month and selected_month != 0:
-        category_data = category_data.filter(func.strftime('%m', Transaction.date) == f"{selected_month:02d}")
+        category_data = category_data.filter(extract('month', Transaction.date) == selected_month)
     if selected_category_id:
         category_data = category_data.filter(Transaction.category_id == selected_category_id)
     category_data = category_data.group_by(Category.name).all()
@@ -1034,9 +1034,9 @@ def dashboard():
         Category.category_type.in_(['Income', 'Expense'])
     )
     if selected_year:
-        subcategory_data = subcategory_data.filter(func.strftime('%Y', Transaction.date) == str(selected_year))
+        subcategory_data = subcategory_data.filter(extract('year', Transaction.date) == selected_year)
     if selected_month and selected_month != 0:
-        subcategory_data = subcategory_data.filter(func.strftime('%m', Transaction.date) == f"{selected_month:02d}")
+        subcategory_data = subcategory_data.filter(extract('month', Transaction.date) == selected_month)
     if selected_category_id:
         subcategory_data = subcategory_data.filter(Transaction.category_id == selected_category_id)
     subcategory_data = subcategory_data.group_by(Category.name, Category.subcategory).all()
