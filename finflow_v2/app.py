@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add current directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file, abort, g
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,7 +13,7 @@ from sqlalchemy import func, event
 from functools import wraps
 from sqlalchemy import text
 from markupsafe import Markup
-import platform, json, os, io, csv, secrets, re, time
+import platform, json, io, csv, secrets, re, time
 
 from security_utils import generate_2fa_secret, generate_totp_code, generate_qr_code_data_url, verify_totp_code, validate_password
 
