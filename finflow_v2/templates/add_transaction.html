@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Add Transaction — FinFlow{% endblock %}
+{% block page_title %}Add Transaction{% endblock %}
+{% block content %}
+<style>
+.fs1 { font-size: 1rem; }
+.fw700 { font-weight: 700; }
+.color-text2 { color: var(--text2); }
+.mt-8px { margin-top: 8px; }
+.denom-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 90; }
+.denom-overlay.open { display: block; }
+.denom-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(540px, calc(100% - 32px)); max-height: calc(100vh - 48px); overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 24px 48px rgba(0,0,0,0.15); }
+.denom-modal.open { display: block; }
+.denom-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 12px; }
+.denom-header h3 { margin: 0; font-size: 1rem; }
+.denom-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; }
+.denom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.denom-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.denom-row label { flex: 1 0 120px; margin: 0; }
+.denom-row input { width: 100%; max-width: 100px; }
+.denom-summary { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 12px; }
+.denom-summary span { display: inline-block; min-width: 80px; }
+.denom-error { color: var(--danger); margin-top: 8px; }
+.denom-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.denom-note { color: var(--muted); font-size: 0.92rem; }
+</style>
+<div class="card card-centered-lg">
+  <div class="flex jc-between ai-center mb-3">
+    <div class="fs1 fw700">New Transaction</div>
+    <a href="{{ url_for('transactions') }}" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
+  <form method="POST" action="{{ url_for('add_transaction') }}">
+    {{ csrf_field() }}
+    <div class="g g2">
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" name="date" class="form-control" value="{{ today }}" placeholder="Select date" title="Transaction Date" required>
+      </div>
+      <div class="form-group">
+        <label>Amount (₹) *</label>
+        <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" title="Amount" required>
+      </div>
+    </div>
+
+    <div class="g g2">
+      <div class="form-group">
+        <label>Category *</label>
+        <select name="category_id" class="form-control" id="catSelect" title="Category" required onchange="updateType()">
+          <option value="">Select category</option>
+          {% set ns = namespace(prev='') %}
+          {% for c in categories %}
+            {% if c.name != ns.prev %}
+              {% if ns.prev %}</optgroup>{% endif %}
+              <optgroup label="{{ c.name }}">
+              {% set ns.prev = c.name %}
+            {% endif %}
+            <option value="{{ c.id }}" data-type="{{ c.category_type }}">{{ c.subcategory }}</option>
+          {% endfor %}
+          {% if categories %}</optgroup>{% endif %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Transaction Type</label>
+        <input type="text" id="txnTypeDisplay" class="form-control color-text2" readonly placeholder="Auto from category" title="Transaction Type">
+        <input type="hidden" name="txn_type" id="txnTypeHidden">
+        <input type="hidden" name="denom_total" id="denomTotalHidden" value="0">
+        <input type="hidden" name="denom_data" id="denomDataHidden" value="{}">
+      </div>
+    </div>
+
+    <div class="g g2">
+      <div class="form-group">
+        <label>Payment Mode *</label>
+        <select name="payment_mode" class="form-control" title="Payment Mode" required onchange="onPaymentModeChange()">
+          <option value="">Select mode</option>
+          <optgroup label="Cash & Wallet">
+            <option value="Cash">💵 Cash</option>
+            <option value="Wallet">👛 Wallet</option>
+          </optgroup>
+          <optgroup label="Cards">
+            <option value="Credit Card">💳 Credit Card</option>
+            <option value="Debit Card">💳 Debit Card</option>
+          </optgroup>
+          <optgroup label="Bank Transfer">
+            <option value="NEFT">🏦 NEFT</option>
+            <option value="RTGS">🏦 RTGS</option>
+            <option value="IMPS">🏦 IMPS</option>
+          </optgroup>
+          <optgroup label="Digital">
+            <option value="UPI">📱 UPI</option>
+            <option value="NACH">🔄 NACH / Auto-debit</option>
+            <option value="Net Banking">💻 Net Banking</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="Cheque">📝 Cheque</option>
+            <option value="EMI">📅 EMI</option>
+            <option value="Auto Debit">🔁 Auto Debit</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Account</label>
+        <select name="account_id" class="form-control" title="Account">
+          <option value="">Select account</option>
+          {% for acc in accounts %}
+          <option value="{{ acc.id }}">{{ acc.icon }} {{ acc.name }} ({{ acc.account_type | title }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="denom-overlay" id="denomOverlay" onclick="hideDenomModal()"></div>
+    <div class="denom-modal" id="denomModal" aria-hidden="true">
+      <div class="denom-header">
+        <h3>Cash / Wallet Denomination</h3>
+        <button type="button" class="denom-close" onclick="hideDenomModal()" aria-label="Close">×</button>
+      </div>
+      <div class="denom-summary">
+        <div><strong>Transaction amount:</strong> <span id="denomTargetAmount">₹0.00</span></div>
+        <div><strong>Total notes/coins:</strong> <span id="denomTotalDisplay">₹0.00</span></div>
+        <div><strong>Difference:</strong> <span id="denomDiffDisplay">₹0.00</span></div>
+      </div>
+      <div class="denom-grid">
+        <div class="denom-row"><label for="denom2000">₹2000</label><input type="number" min="0" step="1" id="denom2000" class="form-control denom-input" data-value="2000" value="0"></div>
+        <div class="denom-row"><label for="denom500">₹500</label><input type="number" min="0" step="1" id="denom500" class="form-control denom-input" data-value="500" value="0"></div>
+        <div class="denom-row"><label for="denom200">₹200</label><input type="number" min="0" step="1" id="denom200" class="form-control denom-input" data-value="200" value="0"></div>
+        <div class="denom-row"><label for="denom100">₹100</label><input type="number" min="0" step="1" id="denom100" class="form-control denom-input" data-value="100" value="0"></div>
+        <div class="denom-row"><label for="denom50">₹50</label><input type="number" min="0" step="1" id="denom50" class="form-control denom-input" data-value="50" value="0"></div>
+        <div class="denom-row"><label for="denom20">₹20</label><input type="number" min="0" step="1" id="denom20" class="form-control denom-input" data-value="20" value="0"></div>
+        <div class="denom-row"><label for="denom10">₹10</label><input type="number" min="0" step="1" id="denom10" class="form-control denom-input" data-value="10" value="0"></div>
+        <div class="denom-row"><label for="denom5">₹5</label><input type="number" min="0" step="1" id="denom5" class="form-control denom-input" data-value="5" value="0"></div>
+        <div class="denom-row"><label for="denom2">₹2</label><input type="number" min="0" step="1" id="denom2" class="form-control denom-input" data-value="2" value="0"></div>
+        <div class="denom-row"><label for="denom1">₹1</label><input type="number" min="0" step="1" id="denom1" class="form-control denom-input" data-value="1" value="0"></div>
+      </div>
+      <div class="denom-note">Enter the current cash / wallet denominations so the total matches the transaction amount.</div>
+      <div class="denom-error" id="denomError"></div>
+      <div class="denom-actions">
+        <button type="button" class="btn btn-ghost" onclick="hideDenomModal()">Close</button>
+        <button type="button" class="btn btn-primary" onclick="saveDenomCounts()">Save Counts</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" name="description" class="form-control" placeholder="What was this for?" title="Description">
+    </div>
+    <div class="g g2">
+      <div class="form-group">
+        <label>Reference / UTR / UPI ID</label>
+        <input type="text" name="reference_no" class="form-control" placeholder="UPI ref, UTR, cheque no." title="Reference Number">
+      </div>
+      <div class="form-group">
+        <label>Tags (comma separated)</label>
+        <input type="text" name="tags" class="form-control" placeholder="groceries, family, emi" title="Tags">
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-8px">
+      <button type="submit" class="btn btn-primary">Save Transaction</button>
+      <a href="{{ url_for('transactions') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+<script nonce="{{ csp_nonce }}">
+const typeColors = { 'Income': '#10b981', 'Expense': '#ef4444', 'Not Reported': '#f59e0b' };
+const denomModal = document.getElementById('denomModal');
+const denomOverlay = document.getElementById('denomOverlay');
+const denomError = document.getElementById('denomError');
+const denomTargetAmount = document.getElementById('denomTargetAmount');
+const denomTotalDisplay = document.getElementById('denomTotalDisplay');
+const denomDiffDisplay = document.getElementById('denomDiffDisplay');
+const denomTotalHidden = document.getElementById('denomTotalHidden');
+const denomDataHidden = document.getElementById('denomDataHidden');
+const denomInputs = Array.from(document.querySelectorAll('.denom-input'));
+const amountInput = document.querySelector('input[name="amount"]');
+const paymentModeSelect = document.querySelector('select[name="payment_mode"]');
+
+function updateType() {
+  const sel = document.getElementById('catSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const type = opt ? opt.dataset.type : '';
+  document.getElementById('txnTypeDisplay').value = type;
+  document.getElementById('txnTypeDisplay').style.color = typeColors[type] || 'var(--text2)';
+  document.getElementById('txnTypeHidden').value = type;
+}
+
+function formatCurrency(value) {
+  return '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getDenomTotal() {
+  return denomInputs.reduce((sum, input) => {
+    const count = Number(input.value) || 0;
+    return sum + count * Number(input.dataset.value);
+  }, 0);
+}
+
+function updateDenomSummary() {
+  const amount = Number(amountInput.value) || 0;
+  const total = getDenomTotal();
+  const diff = total - amount;
+  denomTargetAmount.textContent = formatCurrency(amount);
+  denomTotalDisplay.textContent = formatCurrency(total);
+  denomDiffDisplay.textContent = formatCurrency(diff);
+  denomError.textContent = '';
+  denomTotalHidden.value = total.toFixed(2);
+  denomDataHidden.value = JSON.stringify(denomInputs.reduce((obj, input) => {
+    obj[input.dataset.value] = Number(input.value) || 0;
+    return obj;
+  }, {}));
+}
+
+function denomModeIsActive(value) {
+  return value === 'Cash' || value === 'Wallet';
+}
+
+function openDenomModal() {
+  denomModal.classList.add('open');
+  denomOverlay.classList.add('open');
+  denomModal.setAttribute('aria-hidden', 'false');
+  updateDenomSummary();
+}
+
+function hideDenomModal() {
+  denomModal.classList.remove('open');
+  denomOverlay.classList.remove('open');
+  denomModal.setAttribute('aria-hidden', 'true');
+  denomError.textContent = '';
+}
+
+function saveDenomCounts() {
+  updateDenomSummary();
+  const amount = Number(amountInput.value) || 0;
+  const total = getDenomTotal();
+  if (Math.abs(total - amount) > 0.01) {
+    denomError.textContent = 'Denomination total must equal the entered amount.';
+    return;
+  }
+  hideDenomModal();
+}
+
+function onPaymentModeChange() {
+  if (denomModeIsActive(paymentModeSelect.value)) {
+    openDenomModal();
+  }
+}
+
+function validateDenomOnSubmit(event) {
+  if (!denomModeIsActive(paymentModeSelect.value)) {
+    return true;
+  }
+  updateDenomSummary();
+  const amount = Number(amountInput.value) || 0;
+  const total = getDenomTotal();
+  if (Math.abs(total - amount) > 0.01) {
+    event.preventDefault();
+    denomError.textContent = 'Denomination total must match the transaction amount before saving.';
+    openDenomModal();
+    return false;
+  }
+  denomTotalHidden.value = total.toFixed(2);
+  return true;
+}
+
+document.querySelector('form').addEventListener('submit', validateDenomOnSubmit);
+amountInput.addEventListener('input', updateDenomSummary);
+denomInputs.forEach(input => input.addEventListener('input', updateDenomSummary));
+if (denomModeIsActive(paymentModeSelect.value)) {
+  openDenomModal();
+}
+</script>
+{% endblock %}

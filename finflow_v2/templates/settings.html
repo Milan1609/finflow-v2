@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Settings — FinFlow{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<style>
+.max-w600 { max-width: 600px; }
+.mt-8px { margin-top: 8px; }
+.flex-1 { flex: 1; }
+.cursor-pointer { cursor: pointer; }
+.text-center { text-align: center; }
+.fs15 { font-size: 1.5rem; }
+.fs08 { font-size: 0.8rem; }
+.fw600 { font-weight: 600; }
+.mt-4px { margin-top: 4px; }
+.p8-0 { padding: 8px 0; }
+.bb-border { border-bottom: 1px solid var(--border); }
+.fs085 { font-size: 0.85rem; }
+.lh17 { line-height: 1.7; }
+.flex-wrap { flex-wrap: wrap; }
+.hidden { display: none; }
+.border-accent { border: 2px solid var(--accent); }
+.border-default { border: 2px solid var(--border); }
+.transition-border { transition: border-color 0.2s; }
+</style>
+<div class="max-w600">
+
+  <!-- Theme -->
+  <div class="card mb-3">
+    <div class="section-head">🎨 Appearance</div>
+    <form method="POST">
+      {{ csrf_field() }}
+      <div class="form-group">
+        <label>Theme Mode</label>
+        <div class="flex gap-2 mt-8px">
+          {% for val, label, icon in [('dark','Dark Mode','🌙'),('light','Light Mode','☀️'),('system','System Default','💻')] %}
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="theme" value="{{ val }}" {% if user.theme==val %}checked{% endif %} class="hidden" onchange="this.form.submit()">
+            <div class="card card-sm text-center cursor-pointer {% if user.theme==val %}border-accent{% else %}border-default{% endif %} transition-border">
+              <div class="fs15">{{ icon }}</div>
+              <div class="fs08 fw600 mt-4px">{{ label }}</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Two-Factor Authentication -->
+  <div class="card mb-3">
+    <div class="section-head">🔐 Two-Factor Authentication</div>
+    <div class="muted fs085 lh17">Add a second layer of security to your account. Enabling 2FA requires your password and a verification code from your authenticator app.</div>
+    <div class="flex jc-between ai-center p8-0 bb-border mt-2">
+      <div>
+        <div class="fw600">Current Status</div>
+        <div class="muted fs085">{{ 'Enabled' if user.two_factor_enabled else 'Disabled' }}</div>
+      </div>
+      <div class="pm">{{ '🛡️ Protected' if user.two_factor_enabled else '⚪ Off' }}</div>
+    </div>
+
+    {% if two_factor_step == 'confirm_enable' %}
+    <form method="POST" class="mt-2">
+      {{ csrf_field() }}
+      <input type="hidden" name="two_factor_action" value="enable_2fa_confirm">
+      {% if qr_image_data_url %}
+      <div class="form-group">
+        <label>Scan QR code</label>
+        <div style="display:flex;justify-content:center;padding:10px 0;">
+          <img src="{{ qr_image_data_url }}" alt="Authenticator QR code" style="max-width:220px;width:100%;border-radius:12px;background:#fff;padding:8px;">
+        </div>
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label>Authenticator Code</label>
+        <input type="text" name="totp_code" class="form-control" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" required>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-sm">Verify Code</button>
+        <a href="{{ url_for('settings') }}" class="btn btn-ghost btn-sm">Cancel</a>
+      </div>
+    </form>
+    {% elif two_factor_step == 'confirm_disable' %}
+    <form method="POST" class="mt-2">
+      {{ csrf_field() }}
+      <input type="hidden" name="two_factor_action" value="disable_2fa_confirm">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" name="current_password" class="form-control" placeholder="Enter your password" required>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-danger btn-sm">Disable 2FA</button>
+        <a href="{{ url_for('settings') }}" class="btn btn-ghost btn-sm">Cancel</a>
+      </div>
+    </form>
+    {% else %}
+    <form method="POST" class="mt-2">
+      {{ csrf_field() }}
+      {% if user.two_factor_enabled %}
+      <input type="hidden" name="two_factor_action" value="disable_2fa">
+      <div class="form-group">
+        <label>Authenticator Code</label>
+        <input type="text" name="totp_code" class="form-control" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" required>
+      </div>
+      <button type="submit" class="btn btn-danger btn-sm">Disable 2FA</button>
+      {% else %}
+      <input type="hidden" name="two_factor_action" value="enable_2fa">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" name="current_password" class="form-control" placeholder="Enter your current password" required>
+      </div>
+      <button type="submit" class="btn btn-sm">Enable 2FA</button>
+      {% endif %}
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Account Info -->
+  <div class="card mb-3">
+    <div class="section-head">👤 Account Info</div>
+    <div class="flex jc-between ai-center p8-0 bb-border">
+      <div class="muted">Name</div>
+      <div class="fw600">{{ user.name }}</div>
+    </div>
+    <div class="flex jc-between ai-center p8-0 bb-border">
+      <div class="muted">Email</div>
+      <div class="fw600">{{ user.email }}</div>
+    </div>
+    <div class="flex jc-between ai-center p8-0 bb-border">
+      <div class="muted">Mobile</div>
+      <div class="fw600">{{ user.mobile or '—' }}</div>
+    </div>
+    <div class="flex jc-between ai-center p8-0">
+      <div class="muted">Member Since</div>
+      <div class="fw600">{{ user.created_at.strftime('%d %b %Y') }}</div>
+    </div>
+    <div class="mt-2">
+      <a href="{{ url_for('profile') }}" class="btn btn-ghost btn-sm">Edit Profile</a>
+    </div>
+  </div>
+
+  <!-- About -->
+  <div class="card mb-3">
+    <div class="section-head">ℹ️ About FinFlow</div>
+    <div class="muted fs085 lh17">
+      FinFlow is your personal Indian finance tracker. Track income, expenses, investments across all your bank accounts, demat accounts, wallets and SIPs. Get reminders for SIP, EMI, insurance premiums and never miss a payment.
+    </div>
+    <div class="mt-2 flex gap-2">
+      <span class="pm">Version 2.0</span>
+      <span class="pm">Made in India 🇮🇳</span>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="card">
+    <div class="section-head">🔗 Quick Actions</div>
+    <div class="flex gap-2 flex-wrap">
+      <a href="{{ url_for('add_account') }}" class="btn btn-ghost btn-sm">🏦 Add Account</a>
+      <a href="{{ url_for('add_transaction') }}" class="btn btn-ghost btn-sm">➕ Add Transaction</a>
+      <a href="{{ url_for('schedules') }}" class="btn btn-ghost btn-sm">🔔 Reminders</a>
+      <a href="{{ url_for('categories') }}" class="btn btn-ghost btn-sm">🗂️ Categories</a>
+      <a href="{{ url_for('export_transactions') }}" class="btn btn-ghost btn-sm">⬇ Export Data</a>
+      <form method="POST" action="{{ url_for('logout') }}" class="logout-inline-form">{{ csrf_field() }}<button type="submit" class="btn btn-danger btn-sm">🚪 Logout</button></form>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// Apply theme immediately on change
+document.querySelectorAll('input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const theme = this.value === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : this.value;
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', this.value);
+  });
+});
+</script>
+{% endblock %}

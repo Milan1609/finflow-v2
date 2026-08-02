@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}Edit Account — FinFlow{% endblock %}
+{% block page_title %}Edit Account{% endblock %}
+{% block content %}
+<style>
+.form-note { color: var(--muted); font-size: 0.95rem; margin-top: 8px; }
+.hidden { display: none !important; }
+.denom-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 90; }
+.denom-overlay.open { display: block; }
+.denom-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(540px, calc(100% - 32px)); max-height: calc(100vh - 48px); overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; z-index: 100; box-shadow: 0 24px 48px rgba(0,0,0,0.15); }
+.denom-modal.open { display: block; }
+.denom-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 12px; }
+.denom-header h3 { margin: 0; font-size: 1rem; }
+.denom-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; }
+.denom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.denom-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.denom-row label { flex: 1 0 120px; margin: 0; }
+.denom-row input { width: 100%; max-width: 100px; }
+.denom-summary { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 12px; }
+.denom-summary span { display: inline-block; min-width: 80px; }
+.denom-error { color: var(--danger); margin-top: 8px; }
+.denom-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.denom-note { color: var(--muted); font-size: 0.92rem; }
+</style>
+<div class="card card-centered">
+  <div class="flex jc-between ai-center mb-3">
+    <div class="form-page-title">Edit Account</div>
+    <a href="{{ url_for('accounts') }}" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
+  <form method="POST">
+    {{ csrf_field() }}
+    <div class="form-group">
+      <label>Account Name *</label>
+      <input type="text" name="name" class="form-control" value="{{ acc.name }}" title="Account name" required>
+    </div>
+    <div class="g g2">
+      <div class="form-group">
+        <label>Institution</label>
+        <input type="text" name="institution" class="form-control" value="{{ acc.institution or '' }}" title="Institution name">
+      </div>
+      <div class="form-group">
+        <label>Account Number</label>
+        <input type="text" name="account_number" class="form-control" value="{{ acc.account_number or '' }}" title="Account number">
+      </div>
+    </div>
+    <div class="g g2">
+      <div class="form-group">
+        <label>Color Tag</label>
+        <input type="color" name="color" class="form-control color-input" value="{{ acc.color }}" title="Color tag">
+      </div>
+      <div class="form-group">
+        <label>Icon</label>
+        <input type="text" name="icon" class="form-control" value="{{ acc.icon }}" title="Account icon" maxlength="5">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Currency</label>
+      <select name="currency" class="form-control" title="Currency">
+        <option value="INR" {% if acc.currency == 'INR' or (not acc.currency and user.primary_currency == 'INR') %}selected{% endif %}>INR — Indian Rupee</option>
+        <option value="USD" {% if acc.currency == 'USD' or (not acc.currency and user.primary_currency == 'USD') %}selected{% endif %}>USD — US Dollar</option>
+        <option value="EUR" {% if acc.currency == 'EUR' or (not acc.currency and user.primary_currency == 'EUR') %}selected{% endif %}>EUR — Euro</option>
+        <option value="GBP" {% if acc.currency == 'GBP' or (not acc.currency and user.primary_currency == 'GBP') %}selected{% endif %}>GBP — British Pound</option>
+        <option value="AED" {% if acc.currency == 'AED' or (not acc.currency and user.primary_currency == 'AED') %}selected{% endif %}>AED — UAE Dirham</option>
+        <option value="SAR" {% if acc.currency == 'SAR' or (not acc.currency and user.primary_currency == 'SAR') %}selected{% endif %}>SAR — Saudi Riyal</option>
+        <option value="SGD" {% if acc.currency == 'SGD' or (not acc.currency and user.primary_currency == 'SGD') %}selected{% endif %}>SGD — Singapore Dollar</option>
+        <option value="JPY" {% if acc.currency == 'JPY' or (not acc.currency and user.primary_currency == 'JPY') %}selected{% endif %}>JPY — Japanese Yen</option>
+        <option value="AUD" {% if acc.currency == 'AUD' or (not acc.currency and user.primary_currency == 'AUD') %}selected{% endif %}>AUD — Australian Dollar</option>
+        <option value="CAD" {% if acc.currency == 'CAD' or (not acc.currency and user.primary_currency == 'CAD') %}selected{% endif %}>CAD — Canadian Dollar</option>
+      </select>
+      <div class="muted" style="margin-top:6px;font-size:0.85rem">Use this for travel or foreign accounts.</div>
+    </div>
+    {% if acc.account_type == 'wallet' %}
+    <div class="form-group">
+      <button type="button" class="btn btn-outline btn-sm" onclick="openAccountDenomModal()">Edit Denominations</button>
+      <div class="form-note">Current balance: ₹{{ "{:,.0f}".format(acc.current_balance) }}</div>
+    </div>
+    {% endif %}
+
+    <!-- FD / PPF / OD Details -->
+    <div class="form-group {% if acc.sub_type not in ['FD', 'PPF', 'OD'] %}hidden{% endif %}" id="fdPanel">
+      <div class="section-head">FD / PPF / OD Details</div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" name="start_date" class="form-control" value="{{ acc.start_date.isoformat() if acc.start_date else '' }}" title="Start Date">
+        </div>
+        <div class="form-group">
+          <label>Maturity Date</label>
+          <input type="date" name="maturity_date" class="form-control" value="{{ acc.maturity_date.isoformat() if acc.maturity_date else '' }}" title="Maturity Date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notification</label>
+        <select name="notification_days" class="form-control" title="Notification Days">
+          <option value="">Select days before</option>
+          {% for d in range(1,8) %}
+          <option value="{{ d }}" {% if acc.notification_days == d %}selected{% endif %}>{{ d }} day{{ 's' if d != 1 else '' }} before</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Loan / RD / Pigmy Details -->
+    <div class="form-group {% if acc.sub_type not in ['Loan', 'RD', 'Pigmy'] %}hidden{% endif %}" id="loanPanel">
+      <div class="section-head">Loan / RD / Pigmy Details</div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" name="start_date" class="form-control" value="{{ acc.start_date.isoformat() if acc.start_date else '' }}" title="Start Date">
+        </div>
+        <div class="form-group">
+          <label>Installment Date</label>
+          <input type="date" name="installment_date" class="form-control" value="{{ acc.installment_date.isoformat() if acc.installment_date else '' }}" title="Installment Date">
+        </div>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Installment Amount</label>
+          <input type="number" name="installment_amount" step="0.01" min="0" class="form-control" value="{{ acc.installment_amount or '' }}" title="Installment Amount">
+        </div>
+        <div class="form-group">
+          <label>Installment Type</label>
+          <select name="installment_type" class="form-control" title="Installment Type">
+            <option value="">Select frequency</option>
+            <option value="M" {% if acc.installment_type == 'M' %}selected{% endif %}>Monthly</option>
+            <option value="Q" {% if acc.installment_type == 'Q' %}selected{% endif %}>Quarterly</option>
+            <option value="HY" {% if acc.installment_type == 'HY' %}selected{% endif %}>Half-Yearly</option>
+            <option value="Y" {% if acc.installment_type == 'Y' %}selected{% endif %}>Yearly</option>
+          </select>
+        </div>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Due Date / Maturity Date</label>
+          <input type="date" name="due_date" class="form-control" value="{{ acc.due_date.isoformat() if acc.due_date else '' }}" title="Due Date / Maturity Date">
+        </div>
+        <div class="form-group">
+          <label>Notification</label>
+          <select name="notification_days" class="form-control" title="Notification Days">
+            <option value="">Select days before</option>
+            {% for d in range(1,8) %}
+            <option value="{{ d }}" {% if acc.notification_days == d %}selected{% endif %}>{{ d }} day{{ 's' if d != 1 else '' }} before</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea name="notes" class="form-control" rows="2" title="Account notes">{{ acc.notes or '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Closing Date</label>
+      <input type="date" name="closing_date" class="form-control" title="Closing Date">
+      <div class="form-note">Enter a closing date to close the account. Balance must be zero unless the account is Loan or OD.</div>
+    </div>
+    <input type="hidden" name="denom_total" id="accountDenomTotalHidden" value="0">
+    <input type="hidden" name="denom_data" id="accountDenomDataHidden" value="{}">
+    <div class="denom-overlay" id="accountDenomOverlay" onclick="hideAccountDenomModal()"></div>
+    <div class="denom-modal" id="accountDenomModal" aria-hidden="true">
+      <div class="denom-header">
+        <h3>Wallet / Cash Denomination</h3>
+        <button type="button" class="denom-close" onclick="hideAccountDenomModal()" aria-label="Close">×</button>
+      </div>
+      <div class="denom-summary">
+        <div><strong>Opening balance:</strong> <span id="accountDenomTargetAmount">₹0.00</span></div>
+        <div><strong>Total notes/coins:</strong> <span id="accountDenomTotalDisplay">₹0.00</span></div>
+        <div><strong>Difference:</strong> <span id="accountDenomDiffDisplay">₹0.00</span></div>
+      </div>
+      <div class="denom-grid">
+        <div class="denom-row"><label for="accountDenom2000">₹2000</label><input type="number" min="0" step="1" id="accountDenom2000" class="form-control account-denom-input" data-value="2000" value="0"></div>
+        <div class="denom-row"><label for="accountDenom500">₹500</label><input type="number" min="0" step="1" id="accountDenom500" class="form-control account-denom-input" data-value="500" value="0"></div>
+        <div class="denom-row"><label for="accountDenom200">₹200</label><input type="number" min="0" step="1" id="accountDenom200" class="form-control account-denom-input" data-value="200" value="0"></div>
+        <div class="denom-row"><label for="accountDenom100">₹100</label><input type="number" min="0" step="1" id="accountDenom100" class="form-control account-denom-input" data-value="100" value="0"></div>
+        <div class="denom-row"><label for="accountDenom50">₹50</label><input type="number" min="0" step="1" id="accountDenom50" class="form-control account-denom-input" data-value="50" value="0"></div>
+        <div class="denom-row"><label for="accountDenom20">₹20</label><input type="number" min="0" step="1" id="accountDenom20" class="form-control account-denom-input" data-value="20" value="0"></div>
+        <div class="denom-row"><label for="accountDenom10">₹10</label><input type="number" min="0" step="1" id="accountDenom10" class="form-control account-denom-input" data-value="10" value="0"></div>
+        <div class="denom-row"><label for="accountDenom5">₹5</label><input type="number" min="0" step="1" id="accountDenom5" class="form-control account-denom-input" data-value="5" value="0"></div>
+        <div class="denom-row"><label for="accountDenom2">₹2</label><input type="number" min="0" step="1" id="accountDenom2" class="form-control account-denom-input" data-value="2" value="0"></div>
+        <div class="denom-row"><label for="accountDenom1">₹1</label><input type="number" min="0" step="1" id="accountDenom1" class="form-control account-denom-input" data-value="1" value="0"></div>
+      </div>
+      <div class="denom-note">Enter opening cash / wallet denominations so the amount matches exactly.</div>
+      <div class="denom-error" id="accountDenomError"></div>
+      <div class="denom-actions">
+        <button type="button" class="btn btn-ghost" onclick="hideAccountDenomModal()">Close</button>
+        <button type="button" class="btn btn-primary" onclick="saveAccountDenomCounts()">Save Counts</button>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-primary">Update Account</button>
+      <a href="{{ url_for('accounts') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+<script nonce="{{ csp_nonce }}">
+const accountTypeSelect = document.querySelector('select[name="account_type"]');
+const accountSubTypeSelect = document.getElementById('subTypeSelect');
+const customSubTypeRow = document.getElementById('customSubTypeRow');
+const fdPanel = document.getElementById('fdPanel');
+const loanPanel = document.getElementById('loanPanel');
+const accountDenomModal = document.getElementById('accountDenomModal');
+const accountDenomOverlay = document.getElementById('accountDenomOverlay');
+const accountDenomError = document.getElementById('accountDenomError');
+const accountDenomTargetAmount = document.getElementById('accountDenomTargetAmount');
+const accountDenomTotalDisplay = document.getElementById('accountDenomTotalDisplay');
+const accountDenomDiffDisplay = document.getElementById('accountDenomDiffDisplay');
+const accountDenomTotalHidden = document.getElementById('accountDenomTotalHidden');
+const accountDenomDataHidden = document.getElementById('accountDenomDataHidden');
+const accountDenomInputs = Array.from(document.querySelectorAll('.account-denom-input'));
+const walletCurrentBalance = Number('{{ acc.current_balance or 0 }}') || 0;
+
+function formatCurrency(value) {
+  return '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getAccountDenomTotal() {
+  return accountDenomInputs.reduce((sum, input) => {
+    const count = Number(input.value) || 0;
+    return sum + count * Number(input.dataset.value);
+  }, 0);
+}
+
+function updateAccountDenomSummary() {
+  if (!accountDenomTargetAmount || !accountDenomTotalDisplay || !accountDenomDiffDisplay || !accountDenomTotalHidden || !accountDenomDataHidden) {
+    return;
+  }
+  const amount = walletCurrentBalance;
+  const total = getAccountDenomTotal();
+  const diff = total - amount;
+  accountDenomTargetAmount.textContent = formatCurrency(amount);
+  accountDenomTotalDisplay.textContent = formatCurrency(total);
+  accountDenomDiffDisplay.textContent = formatCurrency(diff);
+  if (accountDenomError) {
+    accountDenomError.textContent = '';
+  }
+  accountDenomTotalHidden.value = total.toFixed(2);
+  const denomCounts = accountDenomInputs.reduce((obj, input) => {
+    obj[input.dataset.value] = Number(input.value) || 0;
+    return obj;
+  }, {});
+  accountDenomDataHidden.value = JSON.stringify(denomCounts);
+}
+
+function openAccountDenomModal() {
+  if (!accountDenomModal || !accountDenomOverlay) return;
+  accountDenomModal.classList.add('open');
+  accountDenomOverlay.classList.add('open');
+  accountDenomModal.setAttribute('aria-hidden', 'false');
+  updateAccountDenomSummary();
+}
+
+function hideAccountDenomModal() {
+  if (!accountDenomModal || !accountDenomOverlay) return;
+  accountDenomModal.classList.remove('open');
+  accountDenomOverlay.classList.remove('open');
+  accountDenomModal.setAttribute('aria-hidden', 'true');
+}
+
+function saveAccountDenomCounts() {
+  const amount = walletCurrentBalance;
+  const total = getAccountDenomTotal();
+  const diff = Math.abs(total - amount);
+  if (diff > 0.01) {
+    accountDenomError.textContent = 'Total must match the current balance exactly.';
+    return;
+  }
+  hideAccountDenomModal();
+}
+
+function updateAccountForm() {
+  const type = accountTypeSelect ? accountTypeSelect.value : '';
+  const subtype = accountSubTypeSelect ? accountSubTypeSelect.value : '';
+
+  if (customSubTypeRow) {
+    customSubTypeRow.classList.toggle('hidden', subtype !== 'Other');
+  }
+  if (fdPanel) {
+    fdPanel.classList.toggle('hidden', type !== 'bank' || !['FD', 'PPF', 'OD'].includes(subtype));
+  }
+  if (loanPanel) {
+    loanPanel.classList.toggle('hidden', type !== 'bank' || !['Loan', 'RD', 'Pigmy'].includes(subtype));
+  }
+
+  if (type === 'wallet') {
+    openAccountDenomModal();
+  } else {
+    hideAccountDenomModal();
+  }
+}
+
+// Load existing denomination data
+document.addEventListener('DOMContentLoaded', () => {
+  const accountDenomInputs = Array.from(document.querySelectorAll('.account-denom-input'));
+  const accountTypeSelect = document.querySelector('select[name="account_type"]');
+  const accountSubTypeSelect = document.getElementById('subTypeSelect');
+
+  const existingDenoms = {{ acc.denominations|tojson if acc and acc.denominations else '[]' }};
+
+  Object.entries(existingDenoms).forEach(([value, count]) => {
+    const input = document.getElementById(`accountDenom${value}`);
+    if (input) {
+      input.value = count;
+    }
+  });
+
+  updateAccountDenomSummary();
+
+  accountDenomInputs.forEach(input => {
+    input.addEventListener('input', updateAccountDenomSummary);
+  });
+
+  if (accountTypeSelect && accountSubTypeSelect) {
+    accountTypeSelect.addEventListener('change', updateAccountForm);
+    accountSubTypeSelect.addEventListener('change', updateAccountForm);
+    updateAccountForm();
+  }
+});
+
+</script>
+{% endblock %}

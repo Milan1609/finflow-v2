@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Transactions — FinFlow{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+{% block content %}
+<style>
+.form-control.w200 { width: 200px; }
+.form-control.w140 { width: 140px; }
+.form-control.w160 { width: 160px; }
+.form-control.w145 { width: 145px; }
+.th-right { text-align: right; }
+.td-fs08 { font-size: 0.8rem; }
+.td-fs085 { font-weight: 600; font-size: 0.85rem; }
+.td-fs07 { font-size: 0.7rem; }
+.td-fs082 { font-size: 0.82rem; }
+.td-fs073 { font-size: 0.73rem; }
+.td-fs072 { font-size: 0.72rem; }
+.flex-wrap { flex-wrap: wrap; }
+</style>
+<div class="flex jc-between ai-center mb-3">
+  <div class="muted">Complete history of all money movements</div>
+  <div class="flex gap-2">
+    <a href="{{ url_for('export_transactions', **request.args) }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+    <a href="{{ url_for('add_transaction') }}" class="btn btn-primary btn-sm">+ Add</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <form method="GET" class="flex gap-2 ai-center flex-wrap">
+    <input type="text" name="search" class="form-control w200" placeholder="🔍 Search amount / description" value="{{ request.args.get('search','') }}">
+    <select name="txn_type" class="form-control w140" title="Transaction Type">
+      <option value="">All Types</option>
+      <option value="Income" {% if request.args.get('txn_type')=='Income' %}selected{% endif %}>Income</option>
+      <option value="Expense" {% if request.args.get('txn_type')=='Expense' %}selected{% endif %}>Expense</option>
+      <option value="Not Reported" {% if request.args.get('txn_type')=='Not Reported' %}selected{% endif %}>Not Reported</option>
+    </select>
+    <select name="payment_mode" class="form-control w160" title="Payment Mode">
+      <option value="">All Modes</option>
+      {% for pm in ['Cash','UPI','NEFT','RTGS','IMPS','NACH','Credit Card','Debit Card','Net Banking','Cheque','EMI','Auto Debit','Wallet'] %}
+      <option {% if request.args.get('payment_mode')==pm %}selected{% endif %}>{{ pm }}</option>
+      {% endfor %}
+    </select>
+    <select name="account_id" class="form-control w160" title="Account">
+      <option value="">All Accounts</option>
+      {% for acc in accounts %}
+      <option value="{{ acc.id }}" {% if request.args.get('account_id')==acc.id|string %}selected{% endif %}>{{ acc.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="category_id" class="form-control w160" title="Category">
+      <option value="">All Categories</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if request.args.get('category_id')==c.id|string %}selected{% endif %}>{{ c.name }} › {{ c.subcategory }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="start_date" class="form-control w145" placeholder="Start Date" title="Start Date" value="{{ request.args.get('start_date','') }}">
+    <input type="date" name="end_date" class="form-control w145" placeholder="End Date" title="End Date" value="{{ request.args.get('end_date','') }}">
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="{{ url_for('transactions') }}" class="btn btn-ghost btn-sm">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table id="txnTable">
+      <thead>
+        <tr>
+          <th class="sortable-header" onclick="sortTable(0)">Date ↕</th>
+          <th class="sortable-header" onclick="sortTable(1)">Description ↕</th>
+          <th>Category</th>
+          <th class="sortable-header" onclick="sortTable(3)">Mode ↕</th>
+          <th>Account</th>
+          <th>Type</th>
+          <th class="sortable-header th-right" onclick="sortTable(6)">Amount ↕</th>
+          <th>Ref</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in txns.items %}
+        <tr>
+          <td class="mono muted td-fs08">{{ t.date.strftime('%d %b %Y') }}</td>
+          <td>
+            <div class="td-fs085">{{ t.description or '—' }}</div>
+            {% if t.tags %}<div class="muted td-fs07">🏷 {{ t.tags }}</div>{% endif %}
+          </td>
+          <td class="muted td-fs082">
+            {% if t.category %}{{ t.category.name }}<br><span class="td-fs073">{{ t.category.subcategory }}</span>{% else %}—{% endif %}
+          </td>
+          <td><span class="pm">{{ t.payment_mode or '—' }}</span></td>
+          <td class="muted td-fs082">{{ t.account.name if t.account else '—' }}</td>
+          <td>
+            <span class="badge {% if t.txn_type=='Income' %}badge-income{% elif t.txn_type=='Expense' %}badge-expense{% else %}badge-nr{% endif %}">
+              {{ t.txn_type }}
+            </span>
+          </td>
+          <td class="th-right mono {% if t.txn_type=='Income' %}text-income{% elif t.txn_type=='Expense' %}text-expense{% else %}text-invest{% endif %}">
+            {% if t.txn_type=='Income' %}+{% elif t.txn_type=='Expense' %}−{% endif %}₹{{ "{:,.2f}".format(t.amount) }}
+          </td>
+          <td class="mono muted td-fs072">{{ t.reference_no or '—' }}</td>
+          <td>
+            <div class="flex gap-1">
+              <a href="{{ url_for('edit_transaction', id=t.id) }}" class="btn btn-ghost btn-icon btn-sm" title="Edit">✏️</a>
+              <form method="POST" action="{{ url_for('delete_transaction', id=t.id) }}" onsubmit="return confirm('Delete this transaction?')">
+                {{ csrf_field() }}
+                <button type="submit" class="btn btn-danger btn-icon btn-sm" title="Delete">🗑️</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9"><div class="empty-state"><div class="ei">📭</div>No transactions found</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if txns.pages > 1 %}
+  <div class="pagination">
+    {% if txns.has_prev %}<a href="{{ url_for('transactions', page=txns.prev_num, **request.args) }}">← Prev</a>{% endif %}
+    {% for p in txns.iter_pages() %}
+      {% if p %}
+        <{% if p==txns.page %}span class="cur"{% else %}a href="{{ url_for('transactions', page=p, **request.args) }}"{% endif %}>{{ p }}</{% if p==txns.page %}span{% else %}a{% endif %}>
+      {% endif %}
+    {% endfor %}
+    {% if txns.has_next %}<a href="{{ url_for('transactions', page=txns.next_num, **request.args) }}">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+let sortDir = {};
+function sortTable(col) {
+  const table = document.getElementById('txnTable');
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  sortDir[col] = !sortDir[col];
+  rows.sort((a, b) => {
+    const aT = a.cells[col] ? a.cells[col].textContent.trim() : '';
+    const bT = b.cells[col] ? b.cells[col].textContent.trim() : '';
+    const aNum = parseFloat(aT.replace(/[₹,+−\s]/g, ''));
+    const bNum = parseFloat(bT.replace(/[₹,+−\s]/g, ''));
+    if (!isNaN(aNum) && !isNaN(bNum)) return sortDir[col] ? aNum - bNum : bNum - aNum;
+    return sortDir[col] ? aT.localeCompare(bT) : bT.localeCompare(aT);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+</script>
+{% endblock %}

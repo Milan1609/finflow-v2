@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Profile — FinFlow{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block content %}
+<div class="g g2 profile-section">
+
+  <!-- Profile Info -->
+  <div class="card">
+    <div class="section-head">Profile Details</div>
+    <div class="profile-header">
+      <div class="avatar-large" id="avatarPreview">
+        {% if user.avatar %}
+        <img src="{{ url_for('static', filename='img/avatars/'+user.avatar) }}" alt="{{ user.name }} profile" class="avatar-img">
+        {% else %}
+        {{ user.name[0].upper() }}
+        {% endif %}
+      </div>
+      <div class="profile-name">{{ user.name }}</div>
+      <div class="muted">{{ user.email }}</div>
+    </div>
+    <form method="POST" enctype="multipart/form-data">
+      {{ csrf_field() }}
+      <input type="hidden" name="action" value="update_profile">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="name" class="form-control" value="{{ user.name }}" placeholder="Your full name" title="Full Name" required>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" class="form-control input-disabled" value="{{ user.email }}" title="Email Address" disabled>
+        <div class="muted profile-email-info">Email cannot be changed</div>
+      </div>
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" name="mobile" class="form-control" value="{{ user.mobile or '' }}" placeholder="9876543210" title="Mobile Number">
+      </div>
+      <div class="form-group">
+        <label>Primary Currency</label>
+        <select name="primary_currency" class="form-control" title="Primary Currency">
+          <option value="INR" {% if user.primary_currency == 'INR' %}selected{% endif %}>INR — Indian Rupee</option>
+          <option value="USD" {% if user.primary_currency == 'USD' %}selected{% endif %}>USD — US Dollar</option>
+          <option value="EUR" {% if user.primary_currency == 'EUR' %}selected{% endif %}>EUR — Euro</option>
+          <option value="GBP" {% if user.primary_currency == 'GBP' %}selected{% endif %}>GBP — British Pound</option>
+          <option value="AED" {% if user.primary_currency == 'AED' %}selected{% endif %}>AED — UAE Dirham</option>
+          <option value="SAR" {% if user.primary_currency == 'SAR' %}selected{% endif %}>SAR — Saudi Riyal</option>
+          <option value="SGD" {% if user.primary_currency == 'SGD' %}selected{% endif %}>SGD — Singapore Dollar</option>
+          <option value="JPY" {% if user.primary_currency == 'JPY' %}selected{% endif %}>JPY — Japanese Yen</option>
+          <option value="AUD" {% if user.primary_currency == 'AUD' %}selected{% endif %}>AUD — Australian Dollar</option>
+          <option value="CAD" {% if user.primary_currency == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
+        </select>
+        <div class="muted" style="margin-top:6px;font-size:0.85rem">This becomes your default currency for new accounts.</div>
+      </div>
+      <div class="form-group">
+        <label>Profile Photo</label>
+        <input type="file" name="avatar" class="form-control" accept="image/*" title="Profile Photo" onchange="previewAvatar(this)">
+      </div>
+      <button type="submit" class="btn btn-primary">Update Profile</button>
+    </form>
+  </div>
+
+  <div>
+    <!-- Change Password -->
+    <div class="card mb-3">
+      <div class="section-head">Change Password</div>
+      <form method="POST">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="change_password">
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" name="old_password" class="form-control" placeholder="Enter current password" title="Current Password" required>
+          {% if errors and errors.get('old_password') %}<div class="field-error">{{ errors.get('old_password') }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" name="new_password" class="form-control" minlength="6" placeholder="Enter new password (min 6 chars)" title="New Password" required pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,14}">
+          {% if errors and errors.get('new_password') %}<div class="field-error">{{ errors.get('new_password') }}</div>{% endif %}
+          <div class="muted" style="margin-top:6px;font-size:0.85rem">Use 6–14 characters with uppercase, lowercase, number and special character.</div>
+        </div>
+        <button type="submit" class="btn btn-ghost">Change Password</button>
+      </form>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card danger-zone">
+      <div class="section-head danger-title">⚠️ Danger Zone</div>
+      <div class="muted mb-2 danger-text">Permanently delete your account and all data. This cannot be undone.</div>
+      <button class="btn btn-danger" onclick="openModal('deleteModal')">Delete My Account</button>
+
+      <div class="divider"></div>
+      <div class="muted mb-2 danger-text">Sign out from all devices</div>
+      <form method="POST" action="{{ url_for('logout') }}" class="logout-inline-form">{{ csrf_field() }}<button type="submit" class="btn btn-ghost">🚪 Logout</button></form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title modal-danger-title">⚠️ Permanently Delete Account?</div>
+    <p class="muted mb-3 modal-warning-text">This will permanently delete your account, all transactions, accounts, and data. This action <strong>cannot be undone</strong>.</p>
+    <p class="muted mb-2 modal-confirm-text">Type your email <strong>{{ user.email }}</strong> to confirm:</p>
+    <form method="POST">
+      {{ csrf_field() }}
+      <input type="hidden" name="action" value="delete_account">
+      <div class="form-group">
+        <input type="email" name="confirm_delete" class="form-control" placeholder="{{ user.email }}" required>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-danger">Yes, Delete Forever</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function previewAvatar(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const el = document.getElementById('avatarPreview');
+      el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+</script>
+{% endblock %}

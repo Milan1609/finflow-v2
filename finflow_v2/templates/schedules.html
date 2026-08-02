@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Reminders & Schedules — FinFlow{% endblock %}
+{% block page_title %}Reminders & Schedules{% endblock %}
+{% block content %}
+<style>
+.m0 { margin: 0; }
+.p9-0 { padding: 9px 0; }
+.bb-border { border-bottom: 1px solid var(--border); }
+.bl-accent { border-left: 3px solid var(--accent); }
+.pl10 { padding-left: 10px; }
+.fs088 { font-size: 0.88rem; }
+.fw600 { font-weight: 600; }
+.fw400 { font-weight: 400; }
+.fs072 { font-size: 0.72rem; }
+</style>
+
+<!-- Notifications -->
+{% if notifs %}
+<div class="card mb-3">
+  <div class="flex jc-between ai-center mb-2">
+    <div class="section-head m0">🔔 Notifications</div>
+    <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+  </div>
+  {% for n in notifs %}
+  <div class="flex jc-between ai-center p9-0 bb-border{% if not n.is_read %} bl-accent pl10{% endif %}">
+    <div>
+      <div class="fs088{% if not n.is_read %} fw600{% else %} fw400{% endif %}">{{ n.message }}</div>
+      <div class="muted fs072">{{ n.due_date.strftime('%d %b %Y') if n.due_date }}</div>
+    </div>
+    {% if not n.is_read %}
+    <button class="btn btn-ghost btn-sm" data-id="{{ n.id }}" onclick="markRead(this.dataset.id, this.parentElement.parentElement)">✓</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="flex jc-between ai-center mb-3">
+  <div class="muted">Set reminders for SIP, EMI, rent, insurance & more</div>
+  <button class="btn btn-primary btn-sm" onclick="openModal('addSchedModal')">+ Add Schedule</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Amount</th>
+          <th>Category</th>
+          <th>Account</th>
+          <th>Payment Mode</th>
+          <th>Frequency</th>
+          <th>Due Day</th>
+          <th>Next Due</th>
+          <th>Remind Before</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scheds %}
+        {% set days = (s.next_due - today).days if s.next_due else None %}
+        <tr>
+          <td class="fw600">{{ s.name }}</td>
+          <td class="mono text-expense">₹{{ "{:,.0f}".format(s.amount) }}</td>
+          <td class="muted">{{ s.category.subcategory if s.category else '—' }}</td>
+          <td class="muted">{{ s.account.name if s.account else '—' }}</td>
+          <td><span class="pm">{{ s.payment_mode or '—' }}</span></td>
+          <td><span class="badge badge-nr">{{ s.frequency | title }}</span></td>
+          <td class="mono">{{ s.due_day }}</td>
+          <td class="mono">{{ s.next_due.strftime('%d %b %Y') if s.next_due else '—' }}</td>
+          <td class="muted">{{ s.remind_days_before }} day(s)</td>
+          <td>
+            {% if days is not none %}
+              {% if days < 0 %}
+                <span class="badge badge-expense">Overdue</span>
+              {% elif days == 0 %}
+                <span class="badge badge-expense">Due Today</span>
+              {% elif days <= 3 %}
+                <span class="badge badge-nr">{{ days }}d left</span>
+              {% else %}
+                <span class="badge badge-income">{{ days }}d left</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            <div class="flex gap-1">
+              <button class="btn btn-ghost btn-sm btn-icon" data-id="{{ s.id }}" data-name="{{ s.name }}" data-amount="{{ s.amount }}" data-frequency="{{ s.frequency }}" data-due-day="{{ s.due_day }}" data-remind="{{ s.remind_days_before }}" data-notes="{{ s.notes or '' }}" onclick="openEditSchedFromButton(this)">✏️</button>
+              <form method="POST" action="{{ url_for('delete_schedule', id=s.id) }}" onsubmit="return confirm('Remove schedule?')">
+                {{ csrf_field() }}
+                <button type="submit" class="btn btn-danger btn-sm btn-icon">🗑️</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11"><div class="empty-state"><div class="ei">🔔</div>No schedules yet. Add your SIP, EMI, rent reminders!</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal-overlay" id="addSchedModal">
+  <div class="modal">
+    <div class="modal-title">Add Payment Schedule</div>
+    <form method="POST" action="{{ url_for('add_schedule') }}">
+      {{ csrf_field() }}
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. HDFC SIP, House Rent, LIC Premium" required>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Amount (₹) *</label>
+          <input type="number" name="amount" class="form-control" step="0.01" placeholder="e.g. 5000" title="Amount" required>
+        </div>
+        <div class="form-group">
+          <label>Due Day of Month *</label>
+          <input type="number" name="due_day" class="form-control" min="1" max="31" value="1" placeholder="e.g. 5" title="Due Day" required>
+        </div>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Frequency *</label>
+          <select name="frequency" class="form-control" title="Frequency" required>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="half-yearly">Half-Yearly</option>
+            <option value="yearly">Yearly</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Remind X Days Before</label>
+          <select name="remind_days_before" class="form-control" title="Remind Days Before">
+            {% for d in range(1,8) %}
+            <option value="{{ d }}" {% if d==3 %}selected{% endif %}>{{ d }} day{{ 's' if d > 1 else '' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category_id" class="form-control" title="Category">
+            <option value="">Select</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}">{{ c.name }} › {{ c.subcategory }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Account</label>
+          <select name="account_id" class="form-control" title="Account">
+            <option value="">Select</option>
+            {% for acc in accounts %}
+            <option value="{{ acc.id }}">{{ acc.icon }} {{ acc.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Payment Mode</label>
+        <select name="payment_mode" class="form-control" title="Payment Mode">
+          <option value="">Select</option>
+          {% for pm in ['Cash','UPI','NEFT','RTGS','IMPS','NACH','Credit Card','Debit Card','Net Banking','Cheque','EMI','Auto Debit'] %}
+          <option>{{ pm }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Axis NACH auto-debit on 5th"></textarea>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Schedule</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('addSchedModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Schedule Modal -->
+<div class="modal-overlay" id="editSchedModal">
+  <div class="modal">
+    <div class="modal-title">Edit Schedule</div>
+    <form method="POST" id="editSchedForm">
+      {{ csrf_field() }}
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" name="name" id="esName" class="form-control" placeholder="e.g. HDFC SIP" title="Name" required>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" name="amount" id="esAmount" class="form-control" step="0.01" placeholder="e.g. 5000" title="Amount" required>
+        </div>
+        <div class="form-group">
+          <label>Due Day</label>
+          <input type="number" name="due_day" id="esDueDay" class="form-control" min="1" max="31" placeholder="e.g. 5" title="Due Day">
+        </div>
+      </div>
+      <div class="g g2">
+        <div class="form-group">
+          <label>Frequency</label>
+          <select name="frequency" id="esFreq" class="form-control" title="Frequency">
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="half-yearly">Half-Yearly</option>
+            <option value="yearly">Yearly</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Remind Before (days)</label>
+          <select name="remind_days_before" id="esRemind" class="form-control" title="Remind Days Before">
+            {% for d in range(1,8) %}
+            <option value="{{ d }}">{{ d }} day{{ 's' if d > 1 else '' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" id="esNotes" class="form-control" rows="2" placeholder="e.g. Axis NACH auto-debit" title="Notes"></textarea>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Update</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('editSchedModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function openEditSchedFromButton(button) {
+  const id = button.dataset.id;
+  const name = button.dataset.name;
+  const amount = button.dataset.amount;
+  const freq = button.dataset.frequency;
+  const dueDay = button.dataset.dueDay;
+  const remind = button.dataset.remind;
+  const notes = button.dataset.notes;
+  openEditSched(id, name, amount, freq, dueDay, remind, notes);
+}
+function openEditSched(id, name, amount, freq, dueDay, remind, notes) {
+  document.getElementById('editSchedForm').action = `/schedules/edit/${id}`;
+  document.getElementById('esName').value = name;
+  document.getElementById('esAmount').value = amount;
+  document.getElementById('esFreq').value = freq;
+  document.getElementById('esDueDay').value = dueDay;
+  document.getElementById('esRemind').value = remind;
+  document.getElementById('esNotes').value = notes;
+  openModal('editSchedModal');
+}
+function markRead(id, row) {
+  fetch(`/notifications/read/${id}`, {
+    method: 'POST',
+    headers: {'X-CSRF-Token': '{{ csrf_token() }}'}
+  });
+  row.style.opacity = '0.5';
+}
+</script>
+{% endblock %}

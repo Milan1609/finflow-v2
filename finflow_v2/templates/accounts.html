@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Accounts — FinFlow{% endblock %}
+{% block page_title %}Accounts{% endblock %}
+{% block content %}
+<style>
+.fs15 { font-size: 1.5rem; }
+.fw700 { font-weight: 700; }
+.fs095 { font-size: 0.95rem; }
+.fs078 { font-size: 0.78rem; }
+.fs073 { font-size: 0.73rem; }
+.mt4px { margin-top: 4px; }
+.fs07 { font-size: 0.7rem; }
+.ttu { text-transform: uppercase; }
+.ls1 { letter-spacing: 1px; }
+.fs085 { font-size: 0.85rem; }
+.ta-right { text-align: right; }
+.fs12 { font-size: 1.2rem; }
+.fw600 { font-weight: 600; }
+.fs075 { font-size: 0.75rem; }
+.mt8px { margin-top: 8px; }
+.fsi { font-style: italic; }
+.mt12px { margin-top: 12px; }
+.account-card { border-left: 4px solid var(--acc-color); position: relative; }
+.acc-color { color: var(--acc-color); }
+</style>
+<div class="flex jc-between ai-center mb-3">
+  <div class="muted">All your financial accounts in one place</div>
+  <div class="flex gap-2">
+    <button class="btn btn-ghost btn-sm" onclick="toggleBalance()"><span class="eye-btn">👁️</span> Hide</button>
+    <a href="{{ url_for('add_account') }}" class="btn btn-primary btn-sm">+ Add Account</a>
+  </div>
+</div>
+
+{% set type_meta = {
+  'bank': ('🏦','Bank Accounts','#3b82f6'),
+  'investment': ('📈','Investments & Demat','#f59e0b'),
+  'wallet': ('👛','Wallets & Cash','#10b981'),
+  'other': ('📁','Other','#6366f1')
+} %}
+
+{% for atype, accs in grouped.items() %}
+{% set meta = type_meta.get(atype, ('📁', atype|title, '#6366f1')) %}
+<div class="mb-3">
+  <div class="section-head">{{ meta[0] }} {{ meta[1] }}</div>
+  <div class="g g3">
+    {% for acc in accs %}
+    <div class="card account-card" data-color="{{ acc.color }}">
+      <div class="flex jc-between ai-center mb-2">
+        <span class="fs15">{{ acc.icon }}</span>
+        <div class="flex gap-1">
+          <a href="{{ url_for('edit_account', id=acc.id) }}" class="btn btn-ghost btn-icon btn-sm">✏️</a>
+          <form method="POST" action="{{ url_for('delete_account', id=acc.id) }}" onsubmit="return confirm('Remove account?')">
+            {{ csrf_field() }}
+            <button type="submit" class="btn btn-danger btn-icon btn-sm">🗑️</button>
+          </form>
+        </div>
+      </div>
+      <div class="fw700 fs095">{{ acc.name }}</div>
+      {% if acc.institution %}<div class="muted fs078">{{ acc.institution }}</div>{% endif %}
+      {% if acc.account_number %}<div class="mono muted fs073">••••{{ acc.account_number[-4:] }}</div>{% endif %}
+      {% if acc.sub_type %}<div class="mt4px"><span class="pm">{{ acc.sub_type }}</span></div>{% endif %}
+      <div class="divider"></div>
+      <div class="flex jc-between">
+        <div>
+          <div class="muted fs07 ttu ls1">Opening</div>
+          <div class="mono fs085">{{ acc.currency or user.primary_currency }} {{ "{:,.2f}".format(acc.opening_balance) }}</div>
+        </div>
+        <div class="ta-right balance-container">
+          <div class="muted fs07 ttu ls1">Current</div>
+          <div class="mono balance-val fs12 fw600 acc-color">{{ acc.currency or user.primary_currency }} {{ "{:,.2f}".format(acc.current_balance) }}</div>
+        </div>
+      </div>
+      {% if acc.denominations %}
+      <div class="mt8px">
+        <div class="muted fs07 ttu ls1 mb-1">Denominations</div>
+        <div class="flex flex-wrap gap-1">
+          {% for denom in acc.denominations %}
+          <span class="pm fs073">{{ denom.denomination_value }}×{{ denom.count }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if acc.notes %}<div class="muted fs075 mt8px fsi">{{ acc.notes[:60] }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><div class="ei">🏦</div><p>No accounts yet.</p><a href="{{ url_for('add_account') }}" class="btn btn-primary mt12px">Add Your First Account</a></div></div>
+{% endfor %}
+
+<script nonce="{{ csp_nonce }}">
+document.querySelectorAll('.account-card').forEach(card => {
+  const color = card.dataset.color;
+  card.style.setProperty('--acc-color', color);
+});
+</script>
+{% endblock %}

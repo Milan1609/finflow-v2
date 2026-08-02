@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Categories — FinFlow{% endblock %}
+{% block page_title %}Categories{% endblock %}
+{% block content %}
+<div class="flex jc-between ai-center mb-3">
+  <div class="muted">Built-in categories + your custom ones</div>
+  <button class="btn btn-primary btn-sm" onclick="openModal('addCatModal')">+ Add Category</button>
+</div>
+
+{% set type_colors = {'Income':'badge-income','Expense':'badge-expense','Not Reported':'badge-nr'} %}
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Subcategory</th>
+          <th>Type</th>
+          <th>Source</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cats %}
+        <tr>
+          <td class="table-bold">{{ c.name }}</td>
+          <td>{{ c.subcategory }}</td>
+          <td><span class="badge {{ type_colors.get(c.category_type,'badge-nr') }}">{{ c.category_type }}</span></td>
+          <td>
+            {% if c.is_system %}
+              <span class="pm">System</span>
+            {% else %}
+              <span class="pm custom-category">Custom</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not c.is_system %}
+            <button class="btn btn-ghost btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" data-subcategory="{{ c.subcategory }}" data-type="{{ c.category_type }}" onclick="openEditModalFromButton(this)">✏️ Edit</button>
+            {% else %}
+            <span class="muted protected-category">Protected</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="addCatModal">
+  <div class="modal">
+    <div class="modal-title">Add Custom Category</div>
+    <form method="POST" action="{{ url_for('add_category') }}">
+      {{ csrf_field() }}
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Freelance, Subscription" required>
+      </div>
+      <div class="form-group">
+        <label>Subcategory *</label>
+        <input type="text" name="subcategory" class="form-control" placeholder="e.g. Fiverr Income" required>
+      </div>
+      <div class="form-group">
+        <label>Type *</label>
+        <select name="category_type" class="form-control" title="Transaction type" required>
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
+          <option value="Not Reported">Not Reported</option>
+        </select>
+      </div>
+      <div class="flex gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Add Category</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('addCatModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editCatModal">
+  <div class="modal">
+    <div class="modal-title">Edit Category</div>
+    <form method="POST" id="editCatForm">
+      {{ csrf_field() }}
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" name="name" id="editCatName" class="form-control" title="Category name" required>
+      </div>
+      <div class="form-group">
+        <label>Subcategory *</label>
+        <input type="text" name="subcategory" id="editCatSub" class="form-control" title="Subcategory name" required>
+      </div>
+      <div class="form-group">
+        <label>Type *</label>
+        <select name="category_type" id="editCatType" class="form-control" title="Transaction type" required>
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
+          <option value="Not Reported">Not Reported</option>
+        </select>
+      </div>
+      <div class="flex gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('editCatModal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function openEditModalFromButton(button) {
+  const id = button.dataset.id;
+  const name = button.dataset.name;
+  const sub = button.dataset.subcategory;
+  const type = button.dataset.type;
+  openEditModal(id, name, sub, type);
+}
+function openEditModal(id, name, sub, type) {
+  document.getElementById('editCatForm').action = `/categories/edit/${id}`;
+  document.getElementById('editCatName').value = name;
+  document.getElementById('editCatSub').value = sub;
+  document.getElementById('editCatType').value = type;
+  openModal('editCatModal');
+}
+</script>
+{% endblock %}

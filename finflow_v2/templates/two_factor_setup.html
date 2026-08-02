@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set up 2FA — FinFlow</title>
+<style>
+:root[data-theme="dark"] { --bg:#080c14; --surface:#0f1623; --border:#1e2d45; --text:#e2eaf8; --text2:#8ea4c8; --accent:#3b82f6; --error:#ef4444; }
+:root[data-theme="light"] { --bg:#f0f4fb; --surface:#ffffff; --border:#dde3f0; --text:#1a2340; --text2:#556080; --accent:#2563eb; --error:#dc2626; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:Arial,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+.card { width:min(100%, 480px); background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; }
+.logo { font-size:1.4rem; font-weight:700; margin-bottom:10px; }
+.logo span { color:var(--accent); }
+.small { color:var(--text2); font-size:0.9rem; line-height:1.5; margin-bottom:16px; }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:0.78rem; font-weight:700; color:var(--text2); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
+.form-control { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:0.9rem; }
+.field-error { margin-top:6px; color:var(--error); font-size:0.82rem; }
+.btn { width:100%; padding:11px; border-radius:8px; font-size:0.9rem; font-weight:700; border:none; cursor:pointer; background:var(--accent); color:#fff; margin-top:6px; }
+.code-box { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; word-break:break-all; font-family:monospace; margin-bottom:12px; }
+.flash { padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:0.85rem; }
+.flash-error { background:rgba(239,68,68,0.1); color:var(--error); border:1px solid rgba(239,68,68,0.2); }
+.flash-success { background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Fin<span>Flow</span> 🔐</div>
+  <div class="small">Finish setting up two-factor authentication for <strong>{{ user.name }}</strong>. Open an authenticator app and enter the code shown below or use the secret key manually.</div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  <div class="form-group">
+    <label>Secret key</label>
+    <div class="code-box">{{ secret }}</div>
+  </div>
+  <div class="form-group">
+    <label>Scan QR code</label>
+    <div style="display:flex;justify-content:center;padding:10px 0;">
+      <img src="{{ qr_image_data_url }}" alt="Authenticator QR code" style="max-width:220px;width:100%;border-radius:12px;background:#fff;padding:8px;">
+    </div>
+  </div>
+  <form method="POST" action="{{ url_for('two_factor_setup') }}">
+    {{ csrf_field() }}
+    <div class="form-group">
+      <label>Authenticator code</label>
+      <input type="text" name="totp_code" class="form-control" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" required>
+      {% if error %}<div class="field-error">{{ error }}</div>{% endif %}
+    </div>
+    <button class="btn" type="submit">Enable Two-Factor Authentication</button>
+  </form>
+</div>
+</body>
+</html>

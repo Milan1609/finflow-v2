@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Statement — FinFlow{% endblock %}
+{% block page_title %}Account Statement{% endblock %}
+{% block content %}
+<style>
+.form-control.w170 { width: 170px; }
+.form-control.w200 { width: 200px; }
+.w40 { width: 40px; }
+.ta-right { text-align: right; }
+.fs11 { font-size: 1.1rem; }
+.fw600 { font-weight: 600; }
+.p12 { padding: 12px; }
+.fs088 { font-size: 0.88rem; }
+.bg-surface2 { background: var(--surface2); }
+.fw700 { font-weight: 700; }
+.bt2-border { border-top: 2px solid var(--border); }
+</style>
+<div class="flex jc-between ai-center mb-3">
+  <div class="muted">Opening → Debit → Credit → Closing per account</div>
+  <div class="flex gap-2">
+    <button class="btn btn-ghost btn-sm" onclick="toggleBalance()"><span class="eye-btn">👁️</span> Hide</button>
+    <a href="{{ url_for('export_transactions') }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <form method="GET" class="flex gap-2 ai-center flex-wrap">
+    <select name="account_type" class="form-control w170" title="Account Type">
+      <option value="">All Account Types</option>
+      <option value="bank" {% if sel_type=='bank' %}selected{% endif %}>🏦 Bank Accounts</option>
+      <option value="investment" {% if sel_type=='investment' %}selected{% endif %}>📈 Investments</option>
+      <option value="wallet" {% if sel_type=='wallet' %}selected{% endif %}>👛 Wallets</option>
+    </select>
+    <select name="account_id" class="form-control w200" title="Account">
+      <option value="">All Accounts</option>
+      {% for acc in accounts %}
+      <option value="{{ acc.id }}" {% if sel_id==acc.id %}selected{% endif %}>{{ acc.icon }} {{ acc.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <a href="{{ url_for('statement') }}" class="btn btn-ghost btn-sm">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="w40">SR.</th>
+          <th>Account Name</th>
+          <th class="ta-right">Opening Balance</th>
+          <th class="ta-right">Total Debit</th>
+          <th class="ta-right">Total Credit</th>
+          <th class="ta-right">Closing Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i, r in enumerate(rows) %}
+        <tr>
+          <td class="muted mono">{{ i+1 }}</td>
+          <td>
+            <div class="flex gap-2 ai-center">
+              <span class="fs11">{{ r.icon }}</span>
+              <div class="fw600">{{ r.name }}</div>
+            </div>
+          </td>
+          <td class="ta-right mono balance-container">
+            <span class="balance-val">₹{{ "{:,.2f}".format(r.opening) }}</span>
+          </td>
+          <td class="ta-right mono text-expense">{{ "{:,.2f}".format(r.debit) }}</td>
+          <td class="ta-right mono text-income">{{ "{:,.2f}".format(r.credit) }}</td>
+          <td class="ta-right mono balance-container">
+            <strong class="balance-val {% if r.closing >= 0 %}text-income{% else %}text-expense{% endif %}">
+              ₹{{ "{:,.2f}".format(r.closing) }}
+            </strong>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="empty-state"><div class="ei">📊</div>No accounts found</div></td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot>
+        <tr class="bg-surface2 fw700 bt2-border">
+          <td colspan="2" class="p12 fs088">TOTAL ({{ rows|length }} accounts)</td>
+          <td class="ta-right p12 mono balance-container">
+            <span class="balance-val">₹{{ "{:,.2f}".format(totals.opening) }}</span>
+          </td>
+          <td class="ta-right p12 mono text-expense">{{ "{:,.2f}".format(totals.debit) }}</td>
+          <td class="ta-right p12 mono text-income">{{ "{:,.2f}".format(totals.credit) }}</td>
+          <td class="ta-right p12 mono balance-container">
+            <strong class="balance-val {% if totals.closing >= 0 %}text-income{% else %}text-expense{% endif %}">
+              ₹{{ "{:,.2f}".format(totals.closing) }}
+            </strong>
+          </td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

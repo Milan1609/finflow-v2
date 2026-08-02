@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinFlow — Personal Finance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --accent:#3b82f6; --income:#10b981; --expense:#ef4444; --surface:#0f1623; --surface2:#141d2e; --border:#1e2d45; --text:#e2eaf8; --text2:#8ea4c8; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Plus Jakarta Sans',sans-serif; background:#080c14; color:#e2eaf8; overflow-x:hidden; }
+a { color: var(--accent); text-decoration: none; }
+
+.navbar {
+  position: fixed; top:0; left:0; right:0;
+  padding: 14px 40px; display:flex; align-items:center; justify-content:space-between;
+  background: rgba(8,12,20,0.72); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 100;
+}
+.navbar-logo { font-size:1.3rem; font-weight:800; letter-spacing:-0.5px; }
+.navbar-logo span { color: var(--accent); }
+.navbar-links { display:flex; gap:20px; align-items:center; }
+.navbar-links a { color:#8ea4c8; font-size:0.88rem; font-weight:500; transition:color 0.2s; }
+.navbar-links a:hover { color:#e2eaf8; }
+.btn-nav { background: var(--accent); color:#fff; padding:8px 18px; border-radius:999px; font-weight:700; font-size:0.85rem; transition:all 0.2s; }
+.btn-nav:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 10px 24px rgba(59,130,246,0.24); }
+.btn-nav-ghost { background: rgba(255,255,255,0.05); color:#e2eaf8; padding:8px 18px; border-radius:999px; font-weight:600; font-size:0.85rem; border:1px solid rgba(255,255,255,0.1); }
+
+.hero {
+  min-height: 100vh; padding: 120px 24px 70px; display:flex; align-items:center; justify-content:center;
+  position:relative; background:
+    radial-gradient(circle at 10% 20%, rgba(59,130,246,0.24), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(16,185,129,0.16), transparent 24%),
+    linear-gradient(135deg, rgba(8,12,20,0.95), rgba(15,22,35,0.96));
+}
+.hero::before, .hero::after {
+  content:''; position:absolute; inset:auto; width:280px; height:280px; border-radius:50%; filter:blur(70px); opacity:.5; pointer-events:none;
+}
+.hero::before { background:rgba(59,130,246,0.18); top:80px; left:-60px; animation: float 10s ease-in-out infinite; }
+.hero::after { background:rgba(16,185,129,0.16); bottom:90px; right:-80px; animation: float 12s ease-in-out infinite reverse; }
+@keyframes float { 0%,100%{ transform:translateY(0px) } 50%{ transform:translateY(-18px) } }
+.hero-shell {
+  width:min(1160px, 100%); display:grid; grid-template-columns: 1.05fr 0.95fr; gap:28px; align-items:center; position:relative; z-index:2;
+}
+.hero-copy { max-width:620px; text-align:center; margin:0 auto; }
+.hero-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(59,130,246,0.12); color:var(--accent); border:1px solid rgba(59,130,246,0.24); border-radius:999px; padding:7px 14px; font-size:0.78rem; font-weight:700; letter-spacing:0.7px; margin-bottom:18px; }
+.hero h1 { font-size:clamp(1.35rem,2.8vw,2.1rem); font-weight:800; line-height:1.08; letter-spacing:-1px; margin-bottom:14px; }
+.hero h1 .grad { background:linear-gradient(135deg,var(--accent),#6d7cff,var(--income)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; color:transparent; }
+.hero p { font-size:0.96rem; color:#8ea4c8; line-height:1.7; margin-bottom:24px; }
+.hero-cta { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
+.btn-hero { padding:13px 24px; border-radius:999px; font-weight:700; font-size:0.95rem; transition:all 0.2s; }
+.btn-hero-primary { background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; }
+.btn-hero-primary:hover { transform:translateY(-2px); box-shadow:0 12px 25px rgba(59,130,246,0.25); }
+.btn-hero-ghost { background:rgba(255,255,255,0.05); color:#e2eaf8; border:1px solid rgba(255,255,255,0.12); }
+.btn-hero-ghost:hover { background:rgba(255,255,255,0.1); }
+.hero-stats { display:flex; gap:18px; flex-wrap:wrap; }
+.hero-stat { min-width:120px; padding:12px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; }
+.hero-stat .val { font-family:'JetBrains Mono',monospace; font-size:1.28rem; font-weight:600; color:var(--accent); }
+.hero-stat .lbl { font-size:0.76rem; color:#8ea4c8; margin-top:4px; }
+.hero-card {
+  background: linear-gradient(180deg, rgba(15,22,35,0.96), rgba(11,17,29,0.95));
+  border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,0.25); position:relative; overflow:hidden;
+}
+.hero-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(59,130,246,0.14), transparent 45%, rgba(16,185,129,0.1)); pointer-events:none; }
+.preview-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.preview-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.06); color:#dce7f8; font-size:0.74rem; font-weight:600; }
+.preview-stack { display:grid; gap:10px; }
+.preview-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; }
+.preview-item .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.preview-item .row .label { font-size:0.74rem; color:#8ea4c8; }
+.preview-item .row .value { font-size:0.83rem; font-weight:700; }
+.bar { height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; }
+.bar > span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--accent),#6366f1); }
+.bar.green > span { background:linear-gradient(90deg,var(--income),#34d399); }
+
+.section { padding: 80px 24px; max-width:1150px; margin:0 auto; }
+.section-title { font-size:clamp(1.45rem,3vw,2.1rem); font-weight:800; letter-spacing:-0.8px; margin-bottom:10px; }
+.section-sub { color:#8ea4c8; font-size:0.95rem; margin-bottom:34px; }
+.features-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; }
+.feature-card {
+  background:linear-gradient(180deg, rgba(15,22,35,0.94), rgba(12,18,30,0.94));
+  border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:22px; transition: all 0.25s ease; position:relative; overflow:hidden;
+}
+.feature-card:hover { transform:translateY(-4px); border-color:rgba(59,130,246,0.35); box-shadow:0 18px 34px rgba(0,0,0,0.18); }
+.feature-card::after { content:''; position:absolute; inset:auto -30px -30px auto; width:120px; height:120px; background:radial-gradient(circle, rgba(59,130,246,0.18), transparent 70%); pointer-events:none; }
+.feature-icon { font-size:1.8rem; margin-bottom:12px; }
+.feature-card h3 { font-size:0.95rem; font-weight:700; margin-bottom:7px; }
+.feature-card p { font-size:0.83rem; color:#8ea4c8; line-height:1.65; }
+
+.home-payment-section { margin-top:28px; padding:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px; }
+.home-section-title { font-size:1rem; font-weight:700; margin-bottom:12px; }
+.pm-grid { display:flex; gap:10px; flex-wrap:wrap; }
+.pm-tag { background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); color:var(--accent); padding:7px 12px; border-radius:999px; font-size:0.8rem; font-weight:600; }
+
+.insight-grid { display:grid; grid-template-columns:1.05fr 0.95fr; gap:20px; align-items:stretch; }
+.insight-panel { background:linear-gradient(180deg, rgba(15,22,35,0.94), rgba(10,15,25,0.95)); border:1px solid rgba(255,255,255,0.08); border-radius:22px; padding:24px; }
+.steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; }
+.step { background:linear-gradient(180deg, rgba(15,22,35,0.94), rgba(12,18,30,0.94)); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:20px; position:relative; }
+.step-num { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#6366f1); display:flex; align-items:center; justify-content:center; font-size:0.86rem; font-weight:800; margin-bottom:14px; }
+.step h3 { font-size:0.92rem; font-weight:700; margin-bottom:6px; }
+.step p { font-size:0.8rem; color:#8ea4c8; line-height:1.6; }
+
+.contact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.contact-card { background:linear-gradient(180deg, rgba(15,22,35,0.94), rgba(12,18,30,0.94)); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:18px; text-align:center; transition:border-color 0.2s; }
+.contact-card:hover { border-color:rgba(59,130,246,0.35); }
+.contact-card .cicon { font-size:1.7rem; margin-bottom:8px; }
+.contact-card .clabel { font-size:0.78rem; color:#8ea4c8; margin-bottom:4px; }
+.contact-card .cval { font-size:0.85rem; font-weight:600; color:var(--accent); }
+
+.footer { text-align:center; padding:32px 24px 44px; border-top:1px solid rgba(255,255,255,0.08); color:#8ea4c8; font-size:0.82rem; }
+
+@media (max-width: 900px) {
+  .hero-shell, .insight-grid { grid-template-columns: 1fr; }
+  .hero { padding-top: 110px; }
+}
+@media (max-width: 720px) {
+  .navbar { padding: 12px 20px; }
+  .navbar-links { gap:10px; }
+  .navbar-links a:not(.btn-nav):not(.btn-nav-ghost) { display:none; }
+  .section { padding: 70px 18px; }
+}
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/finflow-refresh.css') }}">
+<style>
+.home-page .hero-shell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.home-page .hero-copy {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.home-page .hero-badge {
+  align-self: center;
+}
+.home-page .hero h1 {
+  font-size: clamp(1.6rem, 3.2vw, 2.6rem) !important;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 14px;
+}
+.home-page .hero p {
+  font-size: 0.96rem;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.home-page .hero-cta {
+  justify-content: center;
+}
+.home-page .hero-stats {
+  justify-content: center;
+}
+</style>
+</head>
+<body class="home-page">
+
+<nav class="navbar">
+  <div class="navbar-logo">Fin<span>Flow</span> 💸</div>
+  <div class="navbar-links">
+    <a href="#features">Features</a>
+    <a href="#how-to-use">How To Use</a>
+    <a href="#contact">Contact</a>
+    <a href="{{ url_for('login') }}" class="btn-nav-ghost">Login</a>
+    <a href="{{ url_for('register') }}" class="btn-nav">Get Started</a>
+  </div>
+</nav>
+
+
+<section class="hero">
+  <div class="hero-shell">
+    <div class="hero-copy">
+      <div class="hero-badge">🇮🇳 Made for India · UPI · NEFT · NACH · RTGS</div>
+      <h1><span class="grad">💸 FinFlow</span></h1>
+      <h3>turns everyday money<br>into calm, clear control.</h3>
+      <p>Track accounts, wallets, investments, SIPs, recurring payments, and daily spending in one beautiful workspace designed for real life.</p>
+      <div class="hero-cta">
+        <a href="{{ url_for('register') }}" class="btn-hero btn-hero-primary">Start For Free →</a>
+        <a href="#how-to-use" class="btn-hero btn-hero-ghost">How It Works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="val">₹∞</div><div class="lbl">Track any amount</div></div>
+        <div class="hero-stat"><div class="val">29+</div><div class="lbl">Built-in categories</div></div>
+        <div class="hero-stat"><div class="val">10+</div><div class="lbl">Payment modes</div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="section-title">Everything you need 🚀</div>
+  <div class="section-sub">Built specifically for Indian finance — UPI, NACH, NEFT, and more.</div>
+  <div class="features-grid">
+    <div class="feature-card"><div class="feature-icon">📊</div><h3>Smart dashboard</h3><p>Daily income vs expense snapshots, monthly summaries, and account balances at a glance.</p></div>
+    <div class="feature-card"><div class="feature-icon">🏦</div><h3>All accounts in one place</h3><p>Bank accounts, wallets, SIPs, demat, and investments — all with opening balances and clean history.</p></div>
+    <div class="feature-card"><div class="feature-icon">📋</div><h3>Statement views</h3><p>Review opening, debit, credit, and closing values with clarity, just like a financial statement.</p></div>
+    <div class="feature-card"><div class="feature-icon">🔔</div><h3>Smart reminders</h3><p>Stay ahead of SIPs, EMIs, rent, insurance, and recurring payments with friendly reminders.</p></div>
+    <div class="feature-card"><div class="feature-icon">📥</div><h3>Export & share</h3><p>Download filtered transactions as CSV and share them with your accountant or family whenever needed.</p></div>
+    <div class="feature-card"><div class="feature-icon">🌙</div><h3>Modern visual themes</h3><p>Switch between light and dark modes with a polished interface that feels effortless on every screen.</p></div>
+    <div class="feature-card"><div class="feature-icon">👁️</div><h3>Private at a tap</h3><p>Hide or reveal balances instantly when you need a cleaner view or a safer presentation.</p></div>
+    <div class="feature-card"><div class="feature-icon">🗂️</div><h3>Custom categories</h3><p>Use the built-in categories or create your own so your finance view matches your real-world habits.</p></div>
+  </div>
+
+  <div class="home-payment-section">
+    <div class="home-section-title">Supported payment modes</div>
+    <div class="pm-grid">
+      <span class="pm-tag">💵 Cash</span>
+      <span class="pm-tag">📱 UPI</span>
+      <span class="pm-tag">💳 Credit Card</span>
+      <span class="pm-tag">💳 Debit Card</span>
+      <span class="pm-tag">🏦 NEFT</span>
+      <span class="pm-tag">🏦 RTGS</span>
+      <span class="pm-tag">🏦 IMPS</span>
+      <span class="pm-tag">🔄 NACH / Auto-debit</span>
+      <span class="pm-tag">💻 Net Banking</span>
+      <span class="pm-tag">📅 EMI</span>
+      <span class="pm-tag">📝 Cheque</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how-to-use">
+  <div class="section-title">How FinFlow feels in action ✨</div>
+  <div class="section-sub">A simple workflow designed to make money management feel lighter and clearer.</div>
+  <div class="insight-grid">
+    <div class="insight-panel">
+      <div class="section-title" style="font-size:1.2rem; margin-bottom:8px;">Less clutter. More clarity.</div>
+      <p class="section-sub" style="margin-bottom:18px;">The experience is built around calm visuals, quick actions, and smart categories so you can focus on decisions instead of data entry.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h3>Create your account</h3><p>Sign up quickly and secure your workflow with modern login protections.</p></div>
+        <div class="step"><div class="step-num">2</div><h3>Add accounts</h3><p>Bring your bank, wallet, investment, and savings accounts into one place.</p></div>
+        <div class="step"><div class="step-num">3</div><h3>Record transactions</h3><p>Capture expenses and income with categories, payment modes, and notes.</p></div>
+        <div class="step"><div class="step-num">4</div><h3>Stay on top</h3><p>Use reminders and summaries to manage bills, SIPs, and future obligations confidently.</p></div>
+      </div>
+    </div>
+    <div class="insight-panel">
+      <div class="section-title" style="font-size:1.2rem; margin-bottom:8px;">Why people enjoy it</div>
+      <p class="section-sub" style="margin-bottom:18px;">A polished product experience with just the right amount of detail.</p>
+      <div class="preview-stack">
+        <div class="preview-item">
+          <div class="row"><span class="label">Fast setup</span><span class="value">Under 5 mins</span></div>
+          <div class="bar"><span style="width:92%"></span></div>
+        </div>
+        <div class="preview-item">
+          <div class="row"><span class="label">Smart planning</span><span class="value">Always in sync</span></div>
+          <div class="bar green"><span style="width:86%"></span></div>
+        </div>
+        <div class="preview-item">
+          <div class="row"><span class="label">Security mindset</span><span class="value">Protected</span></div>
+          <div class="bar"><span style="width:90%"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contact">
+  <div class="section-title">Get in touch 📬</div>
+  <div class="section-sub">Questions, suggestions, or just want to connect?</div>
+  <div class="contact-grid">
+    <div class="contact-card"><div class="cicon">📧</div><div class="clabel">Email</div><div class="cval">support@finflow.in</div></div>
+    <div class="contact-card"><div class="cicon">📱</div><div class="clabel">WhatsApp</div><div class="cval">+91 9328509067</div></div>
+    <div class="contact-card"><div class="cicon">📸</div><div class="clabel">Instagram</div><div class="cval">@finflow</div></div>
+    <div class="contact-card"><div class="cicon">👥</div><div class="clabel">Facebook</div><div class="cval">FinFlow India</div></div>
+    <div class="contact-card"><div class="cicon">💼</div><div class="clabel">Mobile</div><div class="cval">+91 9328509067</div></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p>© 2026 FinFlow · Built with ❤️ for Indian finance by MD · <a href="{{ url_for('register') }}">Get Started Free</a></p>
+</footer>
+<script nonce="{{ csp_nonce }}">
+const t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+document.documentElement.setAttribute('data-theme', t);
+</script>
+</body>
+</html>

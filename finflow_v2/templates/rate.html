@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Rate Us — FinFlow{% endblock %}
+{% block page_title %}Rate Your Experience{% endblock %}
+
+{% block content %}
+<div class="card card-centered-lg">
+  <div class="section-head">We'd love your input</div>
+  <p class="muted">Tell us what you liked and how we can improve FinFlow.</p>
+
+  <form method="POST">
+    {{ csrf_field() }}
+    <div class="form-group">
+      <label>How was your experience?</label>
+      <div class="rating-group">
+        <label class="rating-choice">
+          <input type="radio" name="rating" value="1">
+          <span class="rating-stars">★</span>
+        </label>
+        <label class="rating-choice">
+          <input type="radio" name="rating" value="2">
+          <span class="rating-stars">★★</span>
+        </label>
+        <label class="rating-choice">
+          <input type="radio" name="rating" value="3">
+          <span class="rating-stars">★★★</span>
+        </label>
+        <label class="rating-choice">
+          <input type="radio" name="rating" value="4">
+          <span class="rating-stars">★★★★</span>
+        </label>
+        <label class="rating-choice">
+          <input type="radio" name="rating" value="5">
+          <span class="rating-stars">★★★★★</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="feedback">Feedback</label>
+      <textarea id="feedback" name="feedback" class="form-control" placeholder="Write your thoughts here..."></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit feedback</button>
+  </form>
+</div>
+{% endblock %}

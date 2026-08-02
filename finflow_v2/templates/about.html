@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}About — FinFlow{% endblock %}
+{% block page_title %}About FinFlow{% endblock %}
+
+{% block content %}
+<style>
+.about-hero {
+  background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(99,102,241,0.12));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 20px;
+  align-items: center;
+}
+.about-hero h2 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin-bottom: 10px;
+}
+.about-hero .hero-badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.about-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.about-list { display:grid; gap:10px; margin-top:10px; }
+.about-list .item { display:flex; gap:10px; align-items:flex-start; }
+.about-list .dot { width:8px; height:8px; border-radius:50%; background: var(--accent); margin-top:7px; flex-shrink:0; }
+.cert-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+@media (max-width: 900px) {
+  .about-hero { grid-template-columns: 1fr; }
+}
+</style>
+
+<div class="about-hero">
+  <div>
+    <div class="section-head">FinFlow at a glance</div>
+    <h2>Your finances, beautifully organized and securely managed.</h2>
+    <p class="muted" style="line-height:1.8; font-size:0.95rem;">
+      FinFlow is a modern personal finance workspace designed to help you track accounts, transactions, investments, reminders, and goals in one calm, intelligent dashboard.
+    </p>
+    <div class="hero-badges">
+      <span class="pm">🔐 Secure by design</span>
+      <span class="pm">💱 Multi-currency ready</span>
+      <span class="pm">📈 Smarter planning</span>
+    </div>
+  </div>
+  <div class="about-panel">
+    <div class="section-head">Why people love it</div>
+    <div class="about-list">
+      <div class="item"><span class="dot"></span><div>Track income, expenses, investments, and accounts without clutter.</div></div>
+      <div class="item"><span class="dot"></span><div>Stay ahead with reminders for bills, SIPs, EMIs, and recurring payments.</div></div>
+      <div class="item"><span class="dot"></span><div>Use one place to plan, review, and take control of your financial goals.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="g g3 mt-3">
+  <div class="card">
+    <div class="section-head">Vision</div>
+    <p class="muted" style="line-height:1.8;">Make financial management simple, clear, and empowering for everyday users.</p>
+  </div>
+  <div class="card">
+    <div class="section-head">Mission</div>
+    <p class="muted" style="line-height:1.8;">Give people confidence over their money through clean insights, automation, and smart controls.</p>
+  </div>
+  <div class="card">
+    <div class="section-head">Experience</div>
+    <p class="muted" style="line-height:1.8;">A calm, polished dashboard that turns daily financial activity into meaningful progress.</p>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="section-head">✨ Highlights & certificates</div>
+  <div class="g g3 mt-2">
+    <div class="about-panel">
+      <div class="cert-badge">🛡️ Security certified</div>
+      <p class="muted mt-2" style="line-height:1.7;">Built with CSRF protection, secure sessions, password policy enforcement, and two-factor authentication support.</p>
+    </div>
+    <div class="about-panel">
+      <div class="cert-badge">💳 Multi-currency ready</div>
+      <p class="muted mt-2" style="line-height:1.7;">Support for a primary currency and separate account currencies, ideal for travel and foreign transactions.</p>
+    </div>
+    <div class="about-panel">
+      <div class="cert-badge">📅 Planning powered</div>
+      <p class="muted mt-2" style="line-height:1.7;">Reminder workflows, account management, and transaction tracking keep financial routines on schedule.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="section-head">What FinFlow helps you do</div>
+  <div class="g g2 mt-2">
+    <div class="about-panel">
+      <div class="fw600">Manage every money move</div>
+      <p class="muted mt-1" style="line-height:1.7;">Capture day-to-day income and expenses with structured categories and account references.</p>
+    </div>
+    <div class="about-panel">
+      <div class="fw600">Stay prepared for what’s next</div>
+      <p class="muted mt-1" style="line-height:1.7;">Plan bill payments, obligations, and savings milestones without losing momentum.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
