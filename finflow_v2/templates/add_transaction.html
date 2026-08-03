@@ -45,7 +45,7 @@
     <div class="g g2">
       <div class="form-group">
         <label>Category *</label>
-        <select name="category_id" class="form-control" id="catSelect" title="Category" required onchange="updateType()">
+        <select name="category_id" class="form-control" id="catSelect" title="Category" required>
           <option value="">Select category</option>
           {% set ns = namespace(prev='') %}
           {% for c in categories %}
@@ -54,15 +54,19 @@
               <optgroup label="{{ c.name }}">
               {% set ns.prev = c.name %}
             {% endif %}
-            <option value="{{ c.id }}" data-type="{{ c.category_type }}">{{ c.subcategory }}</option>
+            <option value="{{ c.id }}">{{ c.subcategory }}</option>
           {% endfor %}
           {% if categories %}</optgroup>{% endif %}
         </select>
       </div>
       <div class="form-group">
-        <label>Transaction Type</label>
-        <input type="text" id="txnTypeDisplay" class="form-control color-text2" readonly placeholder="Auto from category" title="Transaction Type">
-        <input type="hidden" name="txn_type" id="txnTypeHidden">
+        <label>Transaction Type *</label>
+        <select name="txn_type" class="form-control" title="Transaction Type" required>
+          <option value="">Select type</option>
+          <option value="Credit">Credit</option>
+          <option value="Debit">Debit</option>
+          <option value="Not Reported">Not Reported</option>
+        </select>
         <input type="hidden" name="denom_total" id="denomTotalHidden" value="0">
         <input type="hidden" name="denom_data" id="denomDataHidden" value="{}">
       </div>
@@ -162,7 +166,6 @@
   </form>
 </div>
 <script nonce="{{ csp_nonce }}">
-const typeColors = { 'Income': '#10b981', 'Expense': '#ef4444', 'Not Reported': '#f59e0b' };
 const denomModal = document.getElementById('denomModal');
 const denomOverlay = document.getElementById('denomOverlay');
 const denomError = document.getElementById('denomError');
@@ -174,15 +177,6 @@ const denomDataHidden = document.getElementById('denomDataHidden');
 const denomInputs = Array.from(document.querySelectorAll('.denom-input'));
 const amountInput = document.querySelector('input[name="amount"]');
 const paymentModeSelect = document.querySelector('select[name="payment_mode"]');
-
-function updateType() {
-  const sel = document.getElementById('catSelect');
-  const opt = sel.options[sel.selectedIndex];
-  const type = opt ? opt.dataset.type : '';
-  document.getElementById('txnTypeDisplay').value = type;
-  document.getElementById('txnTypeDisplay').style.color = typeColors[type] || 'var(--text2)';
-  document.getElementById('txnTypeHidden').value = type;
-}
 
 function formatCurrency(value) {
   return '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

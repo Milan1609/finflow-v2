@@ -338,6 +338,17 @@ def clean_text(value, max_len=255, *, required=False):
     return value[:max_len]
 
 
+def normalize_txn_type(value):
+    normalized = clean_text(value, 20)
+    if normalized in {'Credit', 'Income', 'income', 'credit'}:
+        return 'Income'
+    if normalized in {'Debit', 'Expense', 'expense', 'debit'}:
+        return 'Expense'
+    if normalized in {'Not Reported', 'Not-Reported', 'not_reported', 'not reported', 'NR'}:
+        return 'Not Reported'
+    raise ValueError('Invalid transaction type selected.')
+
+
 def validate_email(value):
     value = (value or '').strip().lower()
     return value if EMAIL_RE.match(value) else None
@@ -1317,11 +1328,12 @@ def add_transaction():
                 denom_payload, _ = parse_denomination_payload(request.form.get('denom_data'), amount)
             cat = category_for_user(uid, request.form.get('category_id'))
             acc = account_for_user(uid, request.form.get('account_id')) if request.form.get('account_id') else None
+            txn_type = normalize_txn_type(request.form.get('txn_type'))
             txn = Transaction(
                 user_id=uid,
                 date=parse_date_field(request.form.get('date'), 'Transaction date') or date.today(),
                 amount=amount,
-                txn_type=cat.category_type if cat else clean_text(request.form.get('txn_type','Expense'), 20),
+                txn_type=txn_type,
                 category_id=cat.id if cat else None,
                 payment_mode=payment_mode,
                 account_id=acc.id if acc else None,
@@ -1376,7 +1388,7 @@ def edit_transaction(id):
                 denom_payload, _ = parse_denomination_payload(request.form.get('denom_data'), amount)
             txn.date = parse_date_field(request.form.get('date'), 'Transaction date') or date.today()
             txn.amount = amount
-            txn.txn_type = cat.category_type if cat else txn.txn_type
+            txn.txn_type = normalize_txn_type(request.form.get('txn_type'))
             txn.category_id = cat.id if cat else None
             txn.payment_mode = payment_mode
             txn.account_id = new_acc.id if new_acc else None
