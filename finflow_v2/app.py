@@ -151,6 +151,10 @@ class Transaction(BaseModel):
     payment_mode = db.Column(db.String(30))
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
     account = db.relationship('Account', backref='transactions')
+    transfer_account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
+    transfer_account = db.relationship('Account', foreign_keys=[transfer_account_id], backref='transfer_transactions')
+    linked_transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id'))
+    linked_transaction = db.relationship('Transaction', remote_side=[id], backref='linked_transfer')
     description = db.Column(db.String(255))
     reference_no = db.Column(db.String(100))
     tags = db.Column(db.String(200))
@@ -280,6 +284,8 @@ def ensure_transaction_columns():
         for column_name, column_type in [
             ('denom_data', 'TEXT'),
             ('machine_name', 'VARCHAR(100)'),
+            ('transfer_account_id', 'INTEGER'),
+            ('linked_transaction_id', 'INTEGER'),
         ]:
             if column_name not in existing:
                 alter_commands.append(
@@ -347,6 +353,16 @@ def normalize_txn_type(value):
     if normalized in {'Not Reported', 'Not-Reported', 'not_reported', 'not reported', 'NR'}:
         return 'Not Reported'
     raise ValueError('Invalid transaction type selected.')
+
+
+def apply_account_balance_effect(account, txn, *, reverse=False):
+    if not account:
+        return
+    factor = -1 if reverse else 1
+    if txn.txn_type == 'Income':
+        account.current_balance += txn.amount * factor
+    elif txn.txn_type == 'Expense':
+        account.current_balance -= txn.amount * factor
 
 
 def validate_email(value):
@@ -433,6 +449,30 @@ def account_for_user(user_id, account_id, *, active=True):
     if not acc:
         raise ValueError('Invalid account selected.')
     return acc
+
+
+def apply_transaction_balance(txn):
+    if not txn.account_id:
+        return
+    acc = Account.query.get(txn.account_id)
+    if not acc:
+        return
+    if txn.txn_type == 'Income':
+        acc.current_balance += txn.amount
+    elif txn.txn_type == 'Expense':
+        acc.current_balance -= txn.amount
+
+
+def reverse_transaction_balance(txn):
+    if not txn.account_id:
+        return
+    acc = Account.query.get(txn.account_id)
+    if not acc:
+        return
+    if txn.txn_type == 'Income':
+        acc.current_balance -= txn.amount
+    elif txn.txn_type == 'Expense':
+        acc.current_balance += txn.amount
 
 
 def parse_denomination_payload(raw, expected_total=None):
@@ -1328,28 +1368,77 @@ def add_transaction():
                 denom_payload, _ = parse_denomination_payload(request.form.get('denom_data'), amount)
             cat = category_for_user(uid, request.form.get('category_id'))
             acc = account_for_user(uid, request.form.get('account_id')) if request.form.get('account_id') else None
+            credit_account = account_for_user(uid, request.form.get('credit_account_id')) if request.form.get('credit_account_id') else None
+            if credit_account and not acc:
+                raise ValueError('Please select a debit account for the self transfer.')
+            if credit_account and acc and credit_account.id == acc.id:
+                raise ValueError('Credit account must be different from the debit account.')
             txn_type = normalize_txn_type(request.form.get('txn_type'))
+            txn_date = parse_date_field(request.form.get('date'), 'Transaction date') or date.today()
+            description = clean_text(request.form.get('description'), 255)
+            reference_no = clean_text(request.form.get('reference_no'), 100)
+            tags = clean_text(request.form.get('tags'), 200)
+            if credit_account:
+                debit_txn = Transaction(
+                    user_id=uid,
+                    date=txn_date,
+                    amount=amount,
+                    txn_type='Expense',
+                    category_id=cat.id if cat else None,
+                    payment_mode=payment_mode,
+                    account_id=acc.id if acc else None,
+                    transfer_account_id=credit_account.id,
+                    description=description,
+                    reference_no=reference_no,
+                    tags=tags,
+                    denom_data=json.dumps(denom_payload) if denom_payload else None,
+                    machine_name=platform.node() or client_ip()
+                )
+                credit_txn = Transaction(
+                    user_id=uid,
+                    date=txn_date,
+                    amount=amount,
+                    txn_type='Income',
+                    category_id=cat.id if cat else None,
+                    payment_mode=payment_mode,
+                    account_id=credit_account.id,
+                    transfer_account_id=acc.id if acc else None,
+                    description=description,
+                    reference_no=reference_no,
+                    tags=tags,
+                    denom_data=None,
+                    machine_name=platform.node() or client_ip()
+                )
+                db.session.add(debit_txn)
+                db.session.add(credit_txn)
+                db.session.flush()
+                debit_txn.linked_transaction_id = credit_txn.id
+                credit_txn.linked_transaction_id = debit_txn.id
+                apply_account_balance_effect(acc, debit_txn)
+                apply_account_balance_effect(credit_account, credit_txn)
+                db.session.commit()
+                log_audit('transaction', debit_txn.id, 'INSERT', new={'amount':debit_txn.amount,'type':debit_txn.txn_type})
+                log_audit('transaction', credit_txn.id, 'INSERT', new={'amount':credit_txn.amount,'type':credit_txn.txn_type})
+                db.session.commit()
+                flash('Transfer transaction added!', 'success')
+                return redirect(url_for('transactions'))
             txn = Transaction(
                 user_id=uid,
-                date=parse_date_field(request.form.get('date'), 'Transaction date') or date.today(),
+                date=txn_date,
                 amount=amount,
                 txn_type=txn_type,
                 category_id=cat.id if cat else None,
                 payment_mode=payment_mode,
                 account_id=acc.id if acc else None,
-                description=clean_text(request.form.get('description'), 255),
-                reference_no=clean_text(request.form.get('reference_no'), 100),
-                tags=clean_text(request.form.get('tags'), 200),
+                description=description,
+                reference_no=reference_no,
+                tags=tags,
                 denom_data=json.dumps(denom_payload) if denom_payload else None,
                 machine_name=platform.node() or client_ip()
             )
             if txn.txn_type not in TRANSACTION_TYPES:
                 raise ValueError('Invalid transaction type.')
-            if acc:
-                if txn.txn_type == 'Income':
-                    acc.current_balance += txn.amount
-                elif txn.txn_type == 'Expense':
-                    acc.current_balance -= txn.amount
+            apply_account_balance_effect(acc, txn)
             db.session.add(txn)
             db.session.commit()
             log_audit('transaction', txn.id, 'INSERT', new={'amount':txn.amount,'type':txn.txn_type})
@@ -1374,12 +1463,20 @@ def edit_transaction(id):
         try:
             old = {'amount':txn.amount,'type':txn.txn_type,'date':str(txn.date)}
             old_acc = account_for_user(uid, txn.account_id, active=False) if txn.account_id else None
+            old_linked_txn = txn.linked_transaction
             if old_acc:
-                if txn.txn_type == 'Income': old_acc.current_balance -= txn.amount
-                elif txn.txn_type == 'Expense': old_acc.current_balance += txn.amount
+                apply_account_balance_effect(old_acc, txn, reverse=True)
+            if old_linked_txn and old_linked_txn.account_id:
+                old_linked_acc = account_for_user(uid, old_linked_txn.account_id, active=False)
+                apply_account_balance_effect(old_linked_acc, old_linked_txn, reverse=True)
             amount = parse_money(request.form.get('amount'), 'Transaction amount')
             cat = category_for_user(uid, request.form.get('category_id'))
             new_acc = account_for_user(uid, request.form.get('account_id')) if request.form.get('account_id') else None
+            credit_account = account_for_user(uid, request.form.get('credit_account_id')) if request.form.get('credit_account_id') else None
+            if credit_account and not new_acc:
+                raise ValueError('Please select a debit account for the self transfer.')
+            if credit_account and new_acc and credit_account.id == new_acc.id:
+                raise ValueError('Credit account must be different from the debit account.')
             payment_mode = clean_text(request.form.get('payment_mode'), 30, required=True)
             if payment_mode not in PAYMENT_MODES:
                 raise ValueError('Invalid payment mode selected.')
@@ -1388,10 +1485,11 @@ def edit_transaction(id):
                 denom_payload, _ = parse_denomination_payload(request.form.get('denom_data'), amount)
             txn.date = parse_date_field(request.form.get('date'), 'Transaction date') or date.today()
             txn.amount = amount
-            txn.txn_type = normalize_txn_type(request.form.get('txn_type'))
+            txn.txn_type = 'Expense' if credit_account else normalize_txn_type(request.form.get('txn_type'))
             txn.category_id = cat.id if cat else None
             txn.payment_mode = payment_mode
             txn.account_id = new_acc.id if new_acc else None
+            txn.transfer_account_id = credit_account.id if credit_account else None
             txn.description = clean_text(request.form.get('description'), 255)
             txn.reference_no = clean_text(request.form.get('reference_no'), 100)
             txn.tags = clean_text(request.form.get('tags'), 200)
@@ -1399,9 +1497,49 @@ def edit_transaction(id):
             txn.updated_at = utc_now()
             if txn.txn_type not in TRANSACTION_TYPES:
                 raise ValueError('Invalid transaction type.')
-            if new_acc:
-                if txn.txn_type == 'Income': new_acc.current_balance += txn.amount
-                elif txn.txn_type == 'Expense': new_acc.current_balance -= txn.amount
+            if credit_account:
+                if txn.linked_transaction:
+                    linked_txn = txn.linked_transaction
+                else:
+                    linked_txn = Transaction(
+                        user_id=uid,
+                        date=txn.date,
+                        amount=amount,
+                        txn_type='Income',
+                        category_id=cat.id if cat else None,
+                        payment_mode=payment_mode,
+                        account_id=credit_account.id,
+                        transfer_account_id=new_acc.id if new_acc else None,
+                        description=txn.description,
+                        reference_no=txn.reference_no,
+                        tags=txn.tags,
+                        denom_data=None,
+                        machine_name=platform.node() or client_ip()
+                    )
+                    db.session.add(linked_txn)
+                    db.session.flush()
+                    txn.linked_transaction_id = linked_txn.id
+                    linked_txn.linked_transaction_id = txn.id
+                linked_txn.date = txn.date
+                linked_txn.amount = amount
+                linked_txn.txn_type = 'Income'
+                linked_txn.category_id = cat.id if cat else None
+                linked_txn.payment_mode = payment_mode
+                linked_txn.account_id = credit_account.id
+                linked_txn.transfer_account_id = new_acc.id if new_acc else None
+                linked_txn.description = txn.description
+                linked_txn.reference_no = txn.reference_no
+                linked_txn.tags = txn.tags
+                linked_txn.denom_data = None
+                linked_txn.updated_at = utc_now()
+                apply_account_balance_effect(new_acc, txn)
+                apply_account_balance_effect(credit_account, linked_txn)
+            else:
+                if txn.linked_transaction:
+                    linked_txn = txn.linked_transaction
+                    db.session.delete(linked_txn)
+                    txn.linked_transaction_id = None
+                apply_account_balance_effect(new_acc, txn)
             db.session.commit()
             log_audit('transaction', txn.id, 'UPDATE', old=old, new={'amount':txn.amount})
             db.session.commit()
