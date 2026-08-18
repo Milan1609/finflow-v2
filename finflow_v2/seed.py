@@ -17,7 +17,7 @@ with app.app_context():
         db.session.add(u)
         db.session.commit()
         uid = u.id
-        print(f'✅ Demo user created (email: demo@finflow.in | password: demo123)')
+        print('Demo user created (email: demo@finflow.in | password: demo123)')
     else:
         uid = User.query.filter_by(email='demo@finflow.in').first().id
         print('Demo user already exists')
@@ -59,16 +59,15 @@ with app.app_context():
                     db.session.add(Denomination(account_id=acc.id, denomination_value=2000, count=1))
                     db.session.add(Denomination(account_id=acc.id, denomination_value=500, count=1))
                 elif name == 'Google Pay':
-                    db.session.add(Denomination(account_id=acc.id, denomination_value=1000, count=1))
-                    db.session.add(Denomination(account_id=acc.id, denomination_value=500, count=1))
+                    db.session.add(Denomination(account_id=acc.id, denomination_value=500, count=3))
                 elif name == 'Cash':
-                    # 5000 = 2x2000 + 1x1000
+                    # 5000 = 2x2000 + 2x500
                     db.session.add(Denomination(account_id=acc.id, denomination_value=2000, count=2))
-                    db.session.add(Denomination(account_id=acc.id, denomination_value=1000, count=1))
+                    db.session.add(Denomination(account_id=acc.id, denomination_value=500, count=2))
     db.session.commit()
     accs = Account.query.filter_by(user_id=uid).all()
     acc_map = {a.name: a.id for a in accs}
-    print(f'✅ {len(accs)} accounts created')
+    print(f'{len(accs)} accounts created')
 
     # Sample transactions - covering a month of activity
     cats = {c.subcategory: c for c in Category.query.all()}
@@ -127,7 +126,7 @@ with app.app_context():
                          payment_mode=pm, account_id=acc_id, description=desc)
         db.session.add(txn)
     db.session.commit()
-    print(f'✅ Sample transactions added')
+    print('Sample transactions added')
 
     # Schedules
     scheds_data = [
@@ -161,8 +160,8 @@ with app.app_context():
                     remind_days_before=remind)
         db.session.add(s)
     db.session.commit()
-    print('✅ Schedules/reminders added')
+    print('Schedules/reminders added')
 
-    print('\n🎉 Demo data seeded successfully!')
+    print('\nDemo data seeded successfully!')
     print('   Login: demo@finflow.in | Password: demo123')
-    print('   Run: python app.py → http://localhost:5002')
+    print('   Run: python app.py -> http://localhost:5001')

@@ -33,6 +33,95 @@ python seed.py
 
 ---
 
+## 🗄️ Database Setup
+
+FinFlow works locally with SQLite by default. For a public multi-user website, use PostgreSQL so the data remains available after deployments and database rules are enforced centrally.
+
+### 1. Local development (SQLite)
+
+No installation or configuration is needed. Run `python app.py` and FinFlow creates `instance/finflow.db` automatically. The app installs indexes, data-validation triggers, and account-balance triggers at startup.
+
+### 2. Free PostgreSQL for a public deployment
+
+1. Create a free PostgreSQL project with [Neon](https://neon.com/pricing) or [Supabase](https://supabase.com/pricing).
+2. Copy the provider's PostgreSQL connection string. Use the pooled connection string when the provider supplies one.
+3. In PowerShell, set these environment variables for the current session:
+
+```powershell
+$env:DATABASE_URL = 'postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require'
+$env:SECRET_KEY = 'replace-this-with-a-long-random-secret'
+$env:FINFLOW_ENV = 'production'
+```
+
+4. Install the PostgreSQL driver and initialize the database:
+
+```powershell
+pip install -r requirements.txt
+python database_setup.py
+```
+
+5. Start FinFlow:
+
+```powershell
+python app.py
+```
+
+The application converts `postgres://` and `postgresql://` connection strings to the Psycopg driver format automatically. Never commit the connection string or secret key; add them in your hosting provider's environment-variable settings.
+
+The free Neon plan currently advertises no credit card requirement, 0.5 GB storage per project, and a monthly compute allowance. The Supabase Free plan currently includes a 500 MB database, but inactive projects are paused after one week. Check the provider's current limits before choosing one. [Neon pricing](https://neon.com/pricing) and [Supabase pricing](https://supabase.com/pricing) have the latest details.
+
+### Database objects installed
+
+| Object | Purpose |
+|---|---|
+| Tables | Users, categories, accounts, denominations, transactions, schedules, notifications, audit logs, and password resets |
+| Indexes | Fast account, category, transaction, schedule, notification, and audit-log queries |
+| Constraints | Valid amounts, currencies, payment modes, transaction types, frequencies, ownership, and denomination values |
+| Triggers | Reject invalid cross-user data, keep account balances accurate, and timestamp transaction updates |
+| `finflow` schema | PostgreSQL namespace that groups database routines, similar to a package |
+| Functions | `finflow.recalculate_account_balance` and `finflow.next_schedule_due` |
+| Procedures | `CALL finflow.rebuild_account_balances()` and `CALL finflow.advance_due_schedules()` |
+
+PostgreSQL does not use Oracle-style `PACKAGE` objects. The `finflow` schema is the package-like namespace for all FinFlow database functions and procedures.
+
+### Scheduled reminder procedure
+
+Run this from a daily scheduler in your hosting platform to create overdue reminders and move each schedule to its next due date:
+
+```sql
+CALL finflow.advance_due_schedules();
+```
+
+Use this maintenance command if you ever import data manually:
+
+```sql
+CALL finflow.rebuild_account_balances();
+```
+
+### Backups
+
+Export the PostgreSQL database regularly from your provider dashboard or with:
+
+```bash
+pg_dump "$DATABASE_URL" > finflow-backup.sql
+```
+
+To restore a backup into a new database:
+
+```bash
+psql "$DATABASE_URL" < finflow-backup.sql
+```
+
+### Deploy the web app
+
+The repository includes a `Procfile` for hosts that support it. Connect the GitHub repository to a Python web host, add `DATABASE_URL`, `SECRET_KEY`, and `FINFLOW_ENV=production` in that host's environment settings, then use this start command:
+
+```bash
+gunicorn --bind 0.0.0.0:$PORT app:app
+```
+
+---
+
 ## ✅ Complete Feature List
 
 ### 🏠 Home Page (Public)
@@ -182,5 +271,5 @@ taskkill /PID <pid> /F
 
 **Database issues:**
 ```bash
-python -c "from app import app, db; app.app_context().push(); db.create_all(); print('DB OK')"
+python database_setup.py
 ```

@@ -15,6 +15,7 @@ from sqlalchemy import text
 from markupsafe import Markup
 import platform, json, io, csv, secrets, re, time
 
+from database_setup import initialize_database
 from security_utils import generate_2fa_secret, generate_totp_code, generate_qr_code_data_url, verify_totp_code, validate_password
 
 try:
@@ -25,6 +26,15 @@ except Exception:
 
 app = Flask(__name__)
 
+
+def normalize_database_url(value):
+    if value.startswith('postgres://'):
+        return 'postgresql+psycopg://' + value[len('postgres://'):]
+    if value.startswith('postgresql://'):
+        return 'postgresql+psycopg://' + value[len('postgresql://'):]
+    return value
+
+
 IS_PRODUCTION = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('FINFLOW_ENV') == 'production'
 DEV_SECRET_KEY = 'dev-only-change-me-finflow-local'
 _secret_key = os.environ.get('SECRET_KEY')
@@ -32,8 +42,11 @@ if IS_PRODUCTION and (not _secret_key or _secret_key == DEV_SECRET_KEY):
     raise RuntimeError('Set a strong SECRET_KEY environment variable before running FinFlow in production.')
 
 app.config['SECRET_KEY'] = _secret_key or DEV_SECRET_KEY
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///finflow.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(
+    os.environ.get('DATABASE_URL', 'sqlite:///finflow.db')
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['DATABASE_MANAGED_BALANCES'] = False
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'static/img/avatars')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 app.config['MAX_FORM_MEMORY_SIZE'] = 1024 * 1024
@@ -150,7 +163,7 @@ class Transaction(BaseModel):
     category = db.relationship('Category', backref='transactions')
     payment_mode = db.Column(db.String(30))
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
-    account = db.relationship('Account', backref='transactions')
+    account = db.relationship('Account', foreign_keys=[account_id], backref='transactions')
     transfer_account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
     transfer_account = db.relationship('Account', foreign_keys=[transfer_account_id], backref='transfer_transactions')
     linked_transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id'))
@@ -356,7 +369,7 @@ def normalize_txn_type(value):
 
 
 def apply_account_balance_effect(account, txn, *, reverse=False):
-    if not account:
+    if app.config['DATABASE_MANAGED_BALANCES'] or not account:
         return
     factor = -1 if reverse else 1
     if txn.txn_type == 'Income':
@@ -452,7 +465,7 @@ def account_for_user(user_id, account_id, *, active=True):
 
 
 def apply_transaction_balance(txn):
-    if not txn.account_id:
+    if app.config['DATABASE_MANAGED_BALANCES'] or not txn.account_id:
         return
     acc = Account.query.get(txn.account_id)
     if not acc:
@@ -464,7 +477,7 @@ def apply_transaction_balance(txn):
 
 
 def reverse_transaction_balance(txn):
-    if not txn.account_id:
+    if app.config['DATABASE_MANAGED_BALANCES'] or not txn.account_id:
         return
     acc = Account.query.get(txn.account_id)
     if not acc:
@@ -1556,7 +1569,7 @@ def edit_transaction(id):
 def delete_transaction(id):
     uid = session['user_id']
     txn = Transaction.query.filter_by(id=id, user_id=uid, is_deleted=False).first_or_404()
-    if txn.account_id:
+    if not app.config['DATABASE_MANAGED_BALANCES'] and txn.account_id:
         acc = Account.query.get(txn.account_id)
         if acc:
             if txn.txn_type == 'Income': acc.current_balance -= txn.amount
@@ -1971,7 +1984,7 @@ def admin_logout():
 
 def init_app():
     with app.app_context():
-        db.create_all()
+        app.config['DATABASE_MANAGED_BALANCES'] = initialize_database(db)
         ensure_user_columns()
         ensure_account_columns()
         ensure_transaction_columns()
