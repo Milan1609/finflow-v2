@@ -1,6 +1,7 @@
 {
   "files.associations": {
-    "**/database/postgresql/*.sql": "sql"
+    "**/database/postgresql/*.sql": "plaintext",
+    "**/database/sqlite/*.sql": "plaintext"
   },
   "sql.formatOptions": {
     "keywordCase": "upper"
