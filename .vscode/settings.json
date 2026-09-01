@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "**/database/postgresql/*.sql": "sql"
+  },
+  "sql.formatOptions": {
+    "keywordCase": "upper"
+  }
+}

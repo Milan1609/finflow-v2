@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "mtxr.sqltools",
+    "cweijan.vscode-postgresql-client2",
+    "ms-mssql.mssql"
+  ]
+}
