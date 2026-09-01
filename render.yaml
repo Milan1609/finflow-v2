@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: finflow-v2
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT wsgi:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FINFLOW_ENV
+        value: production
