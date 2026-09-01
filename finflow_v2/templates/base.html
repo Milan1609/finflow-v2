@@ -507,6 +507,7 @@ tr:hover td { background: var(--surface2); }
   </div>
 </div>
 
+<script type="application/json" id="csrfTokenData">{{ csrf_token()|tojson }}</script>
 <script nonce="{{ csp_nonce }}">
 // ── THEME ──
 const savedTheme = localStorage.getItem('theme') || '{{ user.theme if user else "system" }}';
@@ -516,7 +517,8 @@ function applyTheme(t) {
     : t;
   document.documentElement.setAttribute('data-theme', th);
 }
-const CSRF_TOKEN = {{ csrf_token()|tojson }};
+const csrfTokenData = document.getElementById('csrfTokenData');
+const CSRF_TOKEN = csrfTokenData ? JSON.parse(csrfTokenData.textContent || 'null') : null;
 applyTheme(savedTheme);
 
 // ── EYE TOGGLE ──
