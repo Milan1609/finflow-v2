@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "**/templates/*.html": "jinja-html",
+    "**/*.j2": "jinja-html"
+  },
+  "python.analysis.typeCheckingMode": "basic"
+}
