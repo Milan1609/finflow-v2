@@ -193,6 +193,7 @@
     </div>
   </form>
 </div>
+<script type="application/json" id="existingAccountDenominations">{{ acc.denominations|tojson if acc and acc.denominations else [] }}</script>
 <script nonce="{{ csp_nonce }}">
 const accountTypeSelect = document.querySelector('select[name="account_type"]');
 const accountSubTypeSelect = document.getElementById('subTypeSelect');
@@ -295,7 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const accountTypeSelect = document.querySelector('select[name="account_type"]');
   const accountSubTypeSelect = document.getElementById('subTypeSelect');
 
-  const existingDenoms = {{ acc.denominations|tojson if acc and acc.denominations else '[]' }};
+  const existingDenomsElement = document.getElementById('existingAccountDenominations');
+  const existingDenoms = existingDenomsElement ? JSON.parse(existingDenomsElement.textContent || '{}') : {};
 
   Object.entries(existingDenoms).forEach(([value, count]) => {
     const input = document.getElementById(`accountDenom${value}`);
