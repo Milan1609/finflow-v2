@@ -1,6 +1,4 @@
-CREATE SCHEMA IF NOT EXISTS finflow;
-
-CREATE OR REPLACE FUNCTION finflow.recalculate_account_balance(p_account_id INTEGER)
+CREATE OR REPLACE FUNCTION recalculate_account_balance(p_account_id INTEGER)
 RETURNS VOID
 LANGUAGE plpgsql
 AS $function$
@@ -26,19 +24,19 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE PROCEDURE finflow.rebuild_account_balances()
+CREATE OR REPLACE PROCEDURE rebuild_account_balances()
 LANGUAGE plpgsql
 AS $procedure$
 DECLARE
     account_record RECORD;
 BEGIN
     FOR account_record IN SELECT id FROM account LOOP
-        PERFORM finflow.recalculate_account_balance(account_record.id);
+        PERFORM recalculate_account_balance(account_record.id);
     END LOOP;
 END;
 $procedure$;
 
-CREATE OR REPLACE FUNCTION finflow.next_schedule_due(p_due_date DATE, p_frequency VARCHAR, p_due_day INTEGER)
+CREATE OR REPLACE FUNCTION next_schedule_due(p_due_date DATE, p_frequency VARCHAR, p_due_day INTEGER)
 RETURNS DATE
 LANGUAGE plpgsql
 IMMUTABLE
@@ -73,7 +71,7 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE PROCEDURE finflow.advance_due_schedules(p_as_of DATE DEFAULT CURRENT_DATE)
+CREATE OR REPLACE PROCEDURE advance_due_schedules(p_as_of DATE DEFAULT CURRENT_DATE)
 LANGUAGE plpgsql
 AS $procedure$
 DECLARE
@@ -96,7 +94,7 @@ BEGIN
             )
             ON CONFLICT (user_id, schedule_id, due_date) DO NOTHING;
 
-            due_date_to_process := finflow.next_schedule_due(
+            due_date_to_process := next_schedule_due(
                 due_date_to_process,
                 schedule_record.frequency,
                 schedule_record.due_day
@@ -110,7 +108,7 @@ BEGIN
 END;
 $procedure$;
 
-CREATE OR REPLACE FUNCTION finflow.validate_transaction()
+CREATE OR REPLACE FUNCTION validate_transaction()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $function$
@@ -144,7 +142,7 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION finflow.validate_schedule()
+CREATE OR REPLACE FUNCTION validate_schedule()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $function$
@@ -168,7 +166,7 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION finflow.set_transaction_updated_at()
+CREATE OR REPLACE FUNCTION set_transaction_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $function$
@@ -178,21 +176,21 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION finflow.sync_transaction_account_balance()
+CREATE OR REPLACE FUNCTION sync_transaction_account_balance()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $function$
 BEGIN
     IF TG_OP = 'DELETE' THEN
-        PERFORM finflow.recalculate_account_balance(OLD.account_id);
+        PERFORM recalculate_account_balance(OLD.account_id);
         RETURN OLD;
     END IF;
 
     IF TG_OP = 'UPDATE' AND OLD.account_id IS DISTINCT FROM NEW.account_id THEN
-        PERFORM finflow.recalculate_account_balance(OLD.account_id);
+        PERFORM recalculate_account_balance(OLD.account_id);
     END IF;
 
-    PERFORM finflow.recalculate_account_balance(NEW.account_id);
+    PERFORM recalculate_account_balance(NEW.account_id);
     RETURN NEW;
 END;
 $function$;
@@ -201,22 +199,22 @@ DROP TRIGGER IF EXISTS transaction_before_validate ON "transaction";
 CREATE TRIGGER transaction_before_validate
 BEFORE INSERT OR UPDATE ON "transaction"
 FOR EACH ROW
-EXECUTE FUNCTION finflow.validate_transaction();
+EXECUTE FUNCTION validate_transaction();
 
 DROP TRIGGER IF EXISTS transaction_before_timestamp ON "transaction";
 CREATE TRIGGER transaction_before_timestamp
 BEFORE UPDATE ON "transaction"
 FOR EACH ROW
-EXECUTE FUNCTION finflow.set_transaction_updated_at();
+EXECUTE FUNCTION set_transaction_updated_at();
 
 DROP TRIGGER IF EXISTS transaction_after_balance_sync ON "transaction";
 CREATE TRIGGER transaction_after_balance_sync
 AFTER INSERT OR UPDATE OR DELETE ON "transaction"
 FOR EACH ROW
-EXECUTE FUNCTION finflow.sync_transaction_account_balance();
+EXECUTE FUNCTION sync_transaction_account_balance();
 
 DROP TRIGGER IF EXISTS schedule_before_validate ON schedule;
 CREATE TRIGGER schedule_before_validate
 BEFORE INSERT OR UPDATE ON schedule
 FOR EACH ROW
-EXECUTE FUNCTION finflow.validate_schedule();
+EXECUTE FUNCTION validate_schedule();

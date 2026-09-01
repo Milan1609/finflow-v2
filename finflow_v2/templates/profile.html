@@ -48,7 +48,7 @@
           <option value="AUD" {% if user.primary_currency == 'AUD' %}selected{% endif %}>AUD — Australian Dollar</option>
           <option value="CAD" {% if user.primary_currency == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
         </select>
-        <div class="muted" style="margin-top:6px;font-size:0.85rem">This becomes your default currency for new accounts.</div>
+        <div class="muted muted-note">This becomes your default currency for new accounts.</div>
       </div>
       <div class="form-group">
         <label>Profile Photo</label>
@@ -74,7 +74,7 @@
           <label>New Password</label>
           <input type="password" name="new_password" class="form-control" minlength="6" placeholder="Enter new password (min 6 chars)" title="New Password" required pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,14}">
           {% if errors and errors.get('new_password') %}<div class="field-error">{{ errors.get('new_password') }}</div>{% endif %}
-          <div class="muted" style="margin-top:6px;font-size:0.85rem">Use 6–14 characters with uppercase, lowercase, number and special character.</div>
+          <div class="muted muted-note">Use 6–14 characters with uppercase, lowercase, number and special character.</div>
         </div>
         <button type="submit" class="btn btn-ghost">Change Password</button>
       </form>

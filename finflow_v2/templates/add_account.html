@@ -146,6 +146,7 @@
       <div class="form-group">
         <label>Opening Balance *</label>
         <input type="number" name="opening_balance" id="openingBalanceInput" class="form-control" value="0" step="0.01" placeholder="0.00" title="Opening Balance" required>
+        <div id="walletDenomHint" class="muted hidden wallet-denom-hint">Wallet / cash denomination will be checked when you save this account.</div>
         <input type="hidden" name="denom_total" id="accountDenomTotalHidden" value="0">
         <input type="hidden" name="denom_data" id="accountDenomDataHidden" value="{}">
       </div>
@@ -163,7 +164,7 @@
           <option value="AUD" {% if user and user.primary_currency == 'AUD' %}selected{% endif %}>AUD — Australian Dollar</option>
           <option value="CAD" {% if user and user.primary_currency == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
         </select>
-        <div class="muted" style="margin-top:6px;font-size:0.85rem">Choose another currency for travel or foreign accounts.</div>
+        <div class="muted muted-note">Choose another currency for travel or foreign accounts.</div>
       </div>
     </div>
     <div class="form-group">
@@ -232,6 +233,7 @@ const accountDenomTotalHidden = document.getElementById('accountDenomTotalHidden
 const accountDenomDataHidden = document.getElementById('accountDenomDataHidden');
 const accountDenomInputs = Array.from(document.querySelectorAll('.account-denom-input'));
 const openingBalanceInput = document.getElementById('openingBalanceInput');
+const walletDenomHint = document.getElementById('walletDenomHint');
 
 function formatCurrency(value) {
   return '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -289,19 +291,15 @@ function updateAccountForm() {
   const type = accountTypeSelect.value;
   const subtype = accountSubTypeSelect.value;
 
-  // Only show custom subtype input for "Other" option
   customSubTypeRow.classList.toggle('hidden', subtype !== 'Other');
-  
-  // Only show FD/PPF/OD panel if account type is "bank" AND subtype is FD/PPF/OD
   fdPanel.classList.toggle('hidden', type !== 'bank' || !['FD', 'PPF', 'OD'].includes(subtype));
-  
-  // Only show Loan/RD/Pigmy panel if account type is "bank" AND subtype is Loan/RD/Pigmy
   loanPanel.classList.toggle('hidden', type !== 'bank' || !['Loan', 'RD', 'Pigmy'].includes(subtype));
 
-  // Show wallet denomination modal if account type is wallet
-  if (type === 'wallet') {
-    openAccountDenomModal();
-  } else {
+  if (walletDenomHint) {
+    walletDenomHint.classList.toggle('hidden', type !== 'wallet');
+  }
+
+  if (type !== 'wallet') {
     hideAccountDenomModal();
   }
 }

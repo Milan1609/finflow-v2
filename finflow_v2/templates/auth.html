@@ -111,20 +111,20 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:v
           <option value="CAD" {% if (form_data.get('primary_currency','INR') if form_data else 'INR') == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
         </select>
         {% if errors and errors.get('primary_currency') %}<div class="field-error">{{ errors.get('primary_currency') }}</div>{% endif %}
-        <div class="muted" style="margin-top:6px;font-size:0.85rem">Your main currency. Add other currencies later for travel and foreign accounts.</div>
+        <div class="muted muted-note">Your main currency. Add other currencies later for travel and foreign accounts.</div>
       </div>
       <div class="form-group">
         <label>Password</label>
         <input type="password" name="password" class="form-control" placeholder="Min 12 characters" required minlength="6" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,128}" title="12–128 chars, include upper+lower+number+special">
         {% if errors and errors.get('password') %}<div class="field-error">{{ errors.get('password') }}</div>{% endif %}
-        <div class="muted" style="margin-top:6px;font-size:0.85rem">Use 12–128 characters with uppercase, lowercase, number and special character.</div>
+        <div class="muted muted-note">Use 12–128 characters with uppercase, lowercase, number and special character.</div>
       </div>
       <div class="form-group">
-        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:0.9rem;color:var(--text)">
+        <label class="auth-checkbox-label">
           <input type="checkbox" name="enable_2fa" value="on" checked>
           <span>Enable two-factor authentication</span>
         </label>
-        <div class="muted" style="margin-top:6px;font-size:0.85rem">You will verify a code from an authenticator app after sign-up.</div>
+        <div class="muted muted-note">You will verify a code from an authenticator app after sign-up.</div>
       </div>
       <button type="submit" class="btn">Create Free Account →</button>
     </form>

@@ -65,8 +65,8 @@
       {% if qr_image_data_url %}
       <div class="form-group">
         <label>Scan QR code</label>
-        <div style="display:flex;justify-content:center;padding:10px 0;">
-          <img src="{{ qr_image_data_url }}" alt="Authenticator QR code" style="max-width:220px;width:100%;border-radius:12px;background:#fff;padding:8px;">
+        <div class="qr-wrap">
+          <img src="{{ qr_image_data_url }}" alt="Authenticator QR code" class="qr-image">
         </div>
       </div>
       {% endif %}
