@@ -14,6 +14,7 @@ from functools import wraps
 from sqlalchemy import text
 from markupsafe import Markup
 import platform, json, io, csv, secrets, re, time
+from urllib.parse import urlsplit
 
 from database_setup import initialize_database
 from security_utils import generate_2fa_secret, generate_totp_code, generate_qr_code_data_url, verify_totp_code, validate_password
@@ -35,6 +36,26 @@ def normalize_database_url(value):
     return value
 
 
+def validate_database_url(value):
+    parsed = urlsplit(value)
+    if parsed.scheme not in {'postgresql', 'postgres', 'postgresql+psycopg'}:
+        raise RuntimeError(
+            'Render configuration error: DATABASE_URL must be a PostgreSQL URL '
+            '(postgresql://USER:PASSWORD@HOST/DATABASE).'
+        )
+    if not parsed.hostname:
+        raise RuntimeError(
+            'Render configuration error: DATABASE_URL must include the complete '
+            'PostgreSQL host and database name.'
+        )
+    if parsed.hostname.startswith('dpg-') and '.' not in parsed.hostname:
+        raise RuntimeError(
+            'Render configuration error: DATABASE_URL contains only a short Render '
+            'hostname. Copy the complete Internal Database URL from the linked '
+            'Render PostgreSQL service.'
+        )
+
+
 IS_PRODUCTION = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('FINFLOW_ENV') == 'production'
 DEV_SECRET_KEY = 'dev-only-change-me-finflow-local'
 _secret_key = os.environ.get('SECRET_KEY')
@@ -44,6 +65,8 @@ if IS_PRODUCTION and (not _secret_key or _secret_key == DEV_SECRET_KEY):
 _database_url = os.environ.get('DATABASE_URL')
 if IS_PRODUCTION and not _database_url:
     raise RuntimeError('Render configuration error: set DATABASE_URL to a PostgreSQL connection string before running FinFlow in production.')
+if _database_url:
+    validate_database_url(_database_url)
 
 app.config['SECRET_KEY'] = _secret_key or DEV_SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(
