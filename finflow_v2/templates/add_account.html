@@ -212,7 +212,7 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="submit" class="btn btn-primary">Save Account</button>
+      <button type="submit" id="saveAccountButton" class="btn btn-primary">Save Account</button>
       <a href="{{ url_for('accounts') }}" class="btn btn-ghost">Cancel</a>
     </div>
   </form>
@@ -235,6 +235,7 @@ const accountDenomInputs = Array.from(document.querySelectorAll('.account-denom-
 const openingBalanceInput = document.getElementById('openingBalanceInput');
 const walletDenomHint = document.getElementById('walletDenomHint');
 const accountForm = document.querySelector('form');
+const saveAccountButton = document.getElementById('saveAccountButton');
 let denominationConfirmed = false;
 
 function formatCurrency(value) {
@@ -324,6 +325,13 @@ function validateAccountDenom(event) {
   return false;
 }
 
+saveAccountButton.addEventListener('click', (event) => {
+  if (accountTypeSelect.value === 'wallet' && !denominationConfirmed) {
+    event.preventDefault();
+    updateAccountDenomSummary();
+    openAccountDenomModal();
+  }
+});
 accountForm.addEventListener('submit', validateAccountDenom);
 openingBalanceInput.addEventListener('input', () => {
   denominationConfirmed = false;
