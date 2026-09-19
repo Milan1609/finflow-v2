@@ -61,15 +61,15 @@ _secret_key = os.environ.get('SECRET_KEY')
 if IS_PRODUCTION and (not _secret_key or _secret_key == DEV_SECRET_KEY):
     fail_startup('Render configuration error: set SECRET_KEY in the service environment before running FinFlow in production.')
 
-_database_url = os.environ.get('DATABASE_URL')
-if IS_PRODUCTION and not _database_url:
+DATABASE_URL = os.getenv('DATABASE_URL')
+if IS_PRODUCTION and not DATABASE_URL:
     fail_startup('Render configuration error: set DATABASE_URL to a PostgreSQL connection string before running FinFlow in production.')
-if _database_url:
-    validate_database_url(_database_url)
+if DATABASE_URL:
+    validate_database_url(DATABASE_URL)
 
 app.config['SECRET_KEY'] = _secret_key or DEV_SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(
-    _database_url or 'sqlite:///finflow.db'
+    DATABASE_URL or 'sqlite:///finflow.db'
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['DATABASE_MANAGED_BALANCES'] = False
