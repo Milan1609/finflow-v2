@@ -25,7 +25,7 @@
     <div class="fs1 fw700">Add New Account</div>
     <a href="{{ url_for('accounts') }}" class="btn btn-ghost btn-sm">← Back</a>
   </div>
-  <form method="POST">
+  <form method="POST" action="{{ url_for('add_account') }}">
     {{ csrf_field() }}
     <div class="g g2">
       <div class="form-group">
