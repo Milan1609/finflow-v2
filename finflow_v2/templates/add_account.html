@@ -289,7 +289,11 @@ function saveAccountDenomCounts() {
   }
   denominationConfirmed = true;
   hideAccountDenomModal();
-  accountForm.requestSubmit();
+  if (!accountForm.reportValidity()) {
+    denominationConfirmed = false;
+    return;
+  }
+  HTMLFormElement.prototype.submit.call(accountForm);
 }
 
 function updateAccountForm() {
