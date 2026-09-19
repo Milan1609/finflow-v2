@@ -234,6 +234,8 @@ const accountDenomDataHidden = document.getElementById('accountDenomDataHidden')
 const accountDenomInputs = Array.from(document.querySelectorAll('.account-denom-input'));
 const openingBalanceInput = document.getElementById('openingBalanceInput');
 const walletDenomHint = document.getElementById('walletDenomHint');
+const accountForm = document.querySelector('form');
+let denominationConfirmed = false;
 
 function formatCurrency(value) {
   return '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -284,7 +286,9 @@ function saveAccountDenomCounts() {
     accountDenomError.textContent = 'Denomination total must equal the opening balance.';
     return;
   }
+  denominationConfirmed = true;
   hideAccountDenomModal();
+  accountForm.requestSubmit();
 }
 
 function updateAccountForm() {
@@ -300,12 +304,17 @@ function updateAccountForm() {
   }
 
   if (type !== 'wallet') {
+    denominationConfirmed = false;
     hideAccountDenomModal();
   }
 }
 
 function validateAccountDenom(event) {
   if (accountTypeSelect.value !== 'wallet') {
+    return true;
+  }
+  if (denominationConfirmed) {
+    denominationConfirmed = false;
     return true;
   }
   updateAccountDenomSummary();
@@ -321,8 +330,11 @@ function validateAccountDenom(event) {
   return true;
 }
 
-document.querySelector('form').addEventListener('submit', validateAccountDenom);
-openingBalanceInput.addEventListener('input', updateAccountDenomSummary);
+accountForm.addEventListener('submit', validateAccountDenom);
+openingBalanceInput.addEventListener('input', () => {
+  denominationConfirmed = false;
+  updateAccountDenomSummary();
+});
 accountDenomInputs.forEach(input => input.addEventListener('input', updateAccountDenomSummary));
 accountTypeSelect.addEventListener('change', updateAccountForm);
 accountSubTypeSelect.addEventListener('change', updateAccountForm);
