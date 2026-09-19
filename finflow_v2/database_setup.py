@@ -46,11 +46,15 @@ def initialize_database(database):
     dialect = engine.dialect.name
 
     if dialect == 'postgresql':
+        with engine.begin() as connection:
+            connection.exec_driver_sql('SET search_path TO public')
         _execute_postgresql_script(engine, _read_sql('postgresql', '001_schema.sql'))
         database.create_all()
+        with engine.begin() as connection:
+            connection.exec_driver_sql('SET search_path TO public')
         _execute_postgresql_script(engine, _read_sql('postgresql', '002_programmability.sql'))
         with engine.begin() as connection:
-            connection.exec_driver_sql('CALL rebuild_account_balances()')
+            connection.exec_driver_sql('CALL public.rebuild_account_balances()')
         return True
 
     database.create_all()
