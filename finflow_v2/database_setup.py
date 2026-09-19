@@ -36,9 +36,23 @@ def _execute_sqlite_script(engine, script):
         raw_connection.close()
 
 
+# def _execute_postgresql_script(engine, script):
+#     with engine.begin() as connection:
+#         connection.exec_driver_sql(script.replace("%", "%%"))
+
 def _execute_postgresql_script(engine, script):
-    with engine.begin() as connection:
-        connection.exec_driver_sql(script)
+    raw_connection = engine.raw_connection()
+
+    try:
+        with raw_connection.cursor() as cursor:
+            cursor.execute(script)
+
+        raw_connection.commit()
+    except Exception:
+        raw_connection.rollback()
+        raise
+    finally:
+        raw_connection.close()
 
 
 def initialize_database(database):
