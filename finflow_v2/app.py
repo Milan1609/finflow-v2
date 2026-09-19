@@ -28,6 +28,11 @@ except Exception:
 app = Flask(__name__)
 
 
+def fail_startup(message):
+    print(message, file=sys.stderr)
+    raise RuntimeError(message)
+
+
 def normalize_database_url(value):
     if value.startswith('postgres://'):
         return 'postgresql+psycopg://' + value[len('postgres://'):]
@@ -39,12 +44,12 @@ def normalize_database_url(value):
 def validate_database_url(value):
     parsed = urlsplit(value or '')
     if parsed.scheme not in {'postgresql', 'postgres', 'postgresql+psycopg'}:
-        raise RuntimeError(
+        fail_startup(
             'Render configuration error: DATABASE_URL must be the complete PostgreSQL URL, '
             'not just a hostname. Expected format: postgresql://USER:PASSWORD@HOST:5432/DATABASE.'
         )
     if not parsed.hostname or not parsed.username or not parsed.password or parsed.path in {'', '/'}:
-        raise RuntimeError(
+        fail_startup(
             'Render configuration error: DATABASE_URL is incomplete. Copy the full Internal Database URL '
             'from your Render PostgreSQL service, including user, password, host, port, and database name.'
         )
@@ -54,11 +59,11 @@ IS_PRODUCTION = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('F
 DEV_SECRET_KEY = 'dev-only-change-me-finflow-local'
 _secret_key = os.environ.get('SECRET_KEY')
 if IS_PRODUCTION and (not _secret_key or _secret_key == DEV_SECRET_KEY):
-    raise RuntimeError('Render configuration error: set SECRET_KEY in the service environment before running FinFlow in production.')
+    fail_startup('Render configuration error: set SECRET_KEY in the service environment before running FinFlow in production.')
 
 _database_url = os.environ.get('DATABASE_URL')
 if IS_PRODUCTION and not _database_url:
-    raise RuntimeError('Render configuration error: set DATABASE_URL to a PostgreSQL connection string before running FinFlow in production.')
+    fail_startup('Render configuration error: set DATABASE_URL to a PostgreSQL connection string before running FinFlow in production.')
 if _database_url:
     validate_database_url(_database_url)
 
