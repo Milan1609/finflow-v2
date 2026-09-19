@@ -317,17 +317,11 @@ function validateAccountDenom(event) {
     denominationConfirmed = false;
     return true;
   }
+  event.preventDefault();
   updateAccountDenomSummary();
-  const amount = Number(openingBalanceInput.value) || 0;
-  const total = getAccountDenomTotal();
-  if (Math.abs(total - amount) > 0.01) {
-    event.preventDefault();
-    accountDenomError.textContent = 'Denomination total must match opening balance before saving.';
-    openAccountDenomModal();
-    return false;
-  }
-  accountDenomTotalHidden.value = total.toFixed(2);
-  return true;
+  accountDenomError.textContent = '';
+  openAccountDenomModal();
+  return false;
 }
 
 accountForm.addEventListener('submit', validateAccountDenom);
