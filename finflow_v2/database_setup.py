@@ -48,12 +48,8 @@ def initialize_database(database):
     if dialect == 'postgresql':
         _execute_postgresql_script(engine, _read_sql('postgresql', '001_schema.sql'))
         database.create_all()
-        with engine.begin() as connection:
-            connection.exec_driver_sql('CREATE SCHEMA IF NOT EXISTS finflow;')
-            connection.exec_driver_sql('SET search_path TO finflow, public;')
         _execute_postgresql_script(engine, _read_sql('postgresql', '002_programmability.sql'))
         with engine.begin() as connection:
-            connection.exec_driver_sql('SET search_path TO finflow, public;')
             connection.exec_driver_sql('CALL rebuild_account_balances()')
         return True
 

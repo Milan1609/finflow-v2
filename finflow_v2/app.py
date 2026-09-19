@@ -13,7 +13,7 @@ from sqlalchemy import func, event, extract
 from functools import wraps
 from sqlalchemy import text
 from markupsafe import Markup
-import platform, json, io, csv, secrets, re, time
+import platform, json, io, csv, secrets, re, time, traceback
 from urllib.parse import urlsplit
 
 from database_setup import initialize_database
@@ -37,22 +37,16 @@ def normalize_database_url(value):
 
 
 def validate_database_url(value):
-    parsed = urlsplit(value)
+    parsed = urlsplit(value or '')
     if parsed.scheme not in {'postgresql', 'postgres', 'postgresql+psycopg'}:
         raise RuntimeError(
-            'Render configuration error: DATABASE_URL must be a PostgreSQL URL '
-            '(postgresql://USER:PASSWORD@HOST/DATABASE).'
+            'Render configuration error: DATABASE_URL must be the complete PostgreSQL URL, '
+            'not just a hostname. Expected format: postgresql://USER:PASSWORD@HOST:5432/DATABASE.'
         )
-    if not parsed.hostname:
+    if not parsed.hostname or not parsed.username or not parsed.password or parsed.path in {'', '/'}:
         raise RuntimeError(
-            'Render configuration error: DATABASE_URL must include the complete '
-            'PostgreSQL host and database name.'
-        )
-    if parsed.hostname.startswith('dpg-') and '.' not in parsed.hostname:
-        raise RuntimeError(
-            'Render configuration error: DATABASE_URL contains only a short Render '
-            'hostname. Copy the complete Internal Database URL from the linked '
-            'Render PostgreSQL service.'
+            'Render configuration error: DATABASE_URL is incomplete. Copy the full Internal Database URL '
+            'from your Render PostgreSQL service, including user, password, host, port, and database name.'
         )
 
 
@@ -2010,13 +2004,18 @@ def admin_logout():
 
 
 def init_app():
-    with app.app_context():
-        app.config['DATABASE_MANAGED_BALANCES'] = initialize_database(db)
-        ensure_user_columns()
-        ensure_account_columns()
-        ensure_transaction_columns()
-        ensure_denomination_table()
-        seed_categories()
+    try:
+        with app.app_context():
+            app.config['DATABASE_MANAGED_BALANCES'] = initialize_database(db)
+            ensure_user_columns()
+            ensure_account_columns()
+            ensure_transaction_columns()
+            ensure_denomination_table()
+            seed_categories()
+    except Exception:
+        print('FinFlow startup failed during database initialization:', file=sys.stderr)
+        traceback.print_exc()
+        raise
 
 
 init_app()

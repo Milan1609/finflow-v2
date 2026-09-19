@@ -78,24 +78,23 @@ The free Neon plan currently advertises no credit card requirement, 0.5 GB stora
 | Indexes | Fast account, category, transaction, schedule, notification, and audit-log queries |
 | Constraints | Valid amounts, currencies, payment modes, transaction types, frequencies, ownership, and denomination values |
 | Triggers | Reject invalid cross-user data, keep account balances accurate, and timestamp transaction updates |
-| `finflow` schema | PostgreSQL namespace that groups database routines, similar to a package |
-| Functions | `finflow.recalculate_account_balance` and `finflow.next_schedule_due` |
-| Procedures | `CALL finflow.rebuild_account_balances()` and `CALL finflow.advance_due_schedules()` |
+| Functions | `recalculate_account_balance` and `next_schedule_due` |
+| Procedures | `CALL rebuild_account_balances()` and `CALL advance_due_schedules()` |
 
-PostgreSQL does not use Oracle-style `PACKAGE` objects. The `finflow` schema is the package-like namespace for all FinFlow database functions and procedures.
+PostgreSQL does not use Oracle-style `PACKAGE` objects. FinFlow uses ordinary PostgreSQL functions, procedures, triggers, and constraints.
 
 ### Scheduled reminder procedure
 
 Run this from a daily scheduler in your hosting platform to create overdue reminders and move each schedule to its next due date:
 
 ```sql
-CALL finflow.advance_due_schedules();
+CALL advance_due_schedules();
 ```
 
 Use this maintenance command if you ever import data manually:
 
 ```sql
-CALL finflow.rebuild_account_balances();
+CALL rebuild_account_balances();
 ```
 
 ### Backups
@@ -117,8 +116,10 @@ psql "$DATABASE_URL" < finflow-backup.sql
 The repository includes a `Procfile` for hosts that support it. Connect the GitHub repository to a Python web host, add `DATABASE_URL`, `SECRET_KEY`, and `FINFLOW_ENV=production` in that host's environment settings, then use this start command:
 
 ```bash
-gunicorn --bind 0.0.0.0:$PORT app:app
+gunicorn --bind 0.0.0.0:$PORT wsgi:app
 ```
+
+On Render, set `DATABASE_URL` to the complete **Internal Database URL** from the linked PostgreSQL service. It must include the username, password, host, port, and database name, for example `postgresql://username:password@dpg-example-a:5432/database`; a short host such as `dpg-example-a` by itself will fail startup validation.
 
 ---
 
