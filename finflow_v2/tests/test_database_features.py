@@ -8,7 +8,7 @@ class DatabaseFeatureTests(unittest.TestCase):
     def setUp(self):
         self.connection = sqlite3.connect(':memory:')
         self.connection.executescript('''
-            CREATE TABLE "user" (id INTEGER PRIMARY KEY, email TEXT NOT NULL);
+            CREATE TABLE "user" (id INTEGER PRIMARY KEY, email TEXT NOT NULL, google_subject TEXT);
             CREATE TABLE category (id INTEGER PRIMARY KEY, user_id INTEGER, is_active BOOLEAN NOT NULL DEFAULT 1);
             CREATE TABLE account (
                 id INTEGER PRIMARY KEY,

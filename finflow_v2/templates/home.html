@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-theme-default="{{ user.theme if user else 'system' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FinFlow — Personal Finance Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/finflow-refresh.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-switcher.css') }}">
+<script src="{{ url_for('static', filename='js/theme-controller.js') }}"></script>
 <style>
 :root {
   --accent:#3b82f6; --income:#10b981; --expense:#ef4444;
@@ -176,12 +179,12 @@ a { color: var(--accent); text-decoration: none; }
 }
 </style>
 </head>
-<body class="home-page">
+<body class="home-page" data-theme-persist="{{ 'true' if user else 'false' }}">
 
 <nav class="navbar">
   <div class="navbar-logo">Fin<span>Flow</span> 💸</div>
   <div class="navbar-links">
-    <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle theme">☀️</button>
+    {% include "_theme_picker.html" %}
     <a href="#features">Features</a>
     <a href="#how-to-use">How To Use</a>
     <a href="#contact">Contact</a>
@@ -294,26 +297,5 @@ a { color: var(--accent); text-decoration: none; }
 <footer class="footer">
   <p>© 2026 FinFlow · Built with ❤️ for Indian finance by MD · <a href="{{ url_for('register') }}">Get Started Free</a></p>
 </footer>
-<script nonce="{{ csp_nonce }}">
-function applyTheme(theme) {
-  const resolved = theme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme;
-  document.documentElement.setAttribute('data-theme', resolved);
-  const btn = document.getElementById('themeToggleBtn');
-  if (btn) {
-    btn.textContent = resolved === 'dark' ? '☀️' : '🌙';
-    btn.title = resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-  }
-}
-const savedTheme = localStorage.getItem('theme') || 'light';
-applyTheme(savedTheme);
-document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
-  const current = document.documentElement.getAttribute('data-theme') || 'light';
-  const next = current === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('theme', next);
-  applyTheme(next);
-});
-</script>
 </body>
 </html>

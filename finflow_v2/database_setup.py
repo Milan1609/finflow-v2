@@ -38,7 +38,14 @@ def _execute_sqlite_script(engine, script):
 
 def _execute_postgresql_script(engine, script):
     with engine.begin() as connection:
-        connection.exec_driver_sql(script.replace("%", "%%"))
+        connection.exec_driver_sql(script)
+
+
+def _ensure_sqlite_google_identity_column(engine):
+    with engine.begin() as connection:
+        columns = connection.exec_driver_sql('PRAGMA table_info("user")').fetchall()
+        if 'google_subject' not in {column[1] for column in columns}:
+            connection.exec_driver_sql('ALTER TABLE "user" ADD COLUMN google_subject VARCHAR(255)')
 
 
 def initialize_database(database):
@@ -53,6 +60,7 @@ def initialize_database(database):
         with engine.begin() as connection:
             connection.exec_driver_sql('SET search_path TO public')
         _execute_postgresql_script(engine, _read_sql('postgresql', '002_programmability.sql'))
+        _execute_postgresql_script(engine, _read_sql('postgresql', '003_google_identity.sql'))
         with engine.begin() as connection:
             connection.exec_driver_sql('CALL public.rebuild_account_balances()')
         return True
@@ -60,6 +68,7 @@ def initialize_database(database):
     database.create_all()
     if dialect == 'sqlite':
         _configure_sqlite(engine)
+        _ensure_sqlite_google_identity_column(engine)
         _execute_sqlite_script(engine, sqlite_programmability_sql())
         return True
 

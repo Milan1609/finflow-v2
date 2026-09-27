@@ -6,6 +6,7 @@ CREATE INDEX IF NOT EXISTS idx_transaction_category_active ON "transaction"(cate
 CREATE INDEX IF NOT EXISTS idx_schedule_user_active_due ON schedule(user_id, is_active, next_due);
 CREATE INDEX IF NOT EXISTS idx_notification_user_read_due ON notification(user_id, is_read, due_date);
 CREATE INDEX IF NOT EXISTS idx_audit_log_record ON audit_log(table_name, record_id, timestamp DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_google_subject ON "user"(google_subject) WHERE google_subject IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_denomination_account_value ON denomination(account_id, denomination_value);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notification_schedule_due ON notification(user_id, schedule_id, due_date);
 

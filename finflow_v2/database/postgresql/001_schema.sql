@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS "user" (
     email VARCHAR(150) NOT NULL,
     mobile VARCHAR(15),
     password_hash VARCHAR(256) NOT NULL,
+    google_subject VARCHAR(255),
     avatar VARCHAR(200) NOT NULL DEFAULT '',
     theme VARCHAR(20) NOT NULL DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
     primary_currency VARCHAR(10) NOT NULL DEFAULT 'INR' CHECK (primary_currency IN ('INR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'SGD', 'JPY', 'AUD', 'CAD')),
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS password_reset (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email_casefold ON "user"(LOWER(email));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_google_subject ON "user"(google_subject) WHERE google_subject IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_mobile ON "user"(mobile) WHERE mobile IS NOT NULL AND mobile <> '';
 CREATE UNIQUE INDEX IF NOT EXISTS uq_system_category ON category(name, subcategory, category_type) WHERE user_id IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_category ON category(user_id, name, subcategory, category_type) WHERE user_id IS NOT NULL;

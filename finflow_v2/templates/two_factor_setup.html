@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light" data-theme-default="system">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Set up 2FA — FinFlow</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/finflow-refresh.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-switcher.css') }}">
+<script src="{{ url_for('static', filename='js/theme-controller.js') }}"></script>
 <style>
 :root[data-theme="dark"] { --bg:#080c14; --surface:#0f1623; --border:#1e2d45; --text:#e2eaf8; --text2:#8ea4c8; --accent:#3b82f6; --error:#ef4444; }
 :root[data-theme="light"] { --bg:#f0f4fb; --surface:#ffffff; --border:#dde3f0; --text:#1a2340; --text2:#556080; --accent:#2563eb; --error:#dc2626; }
@@ -24,7 +27,10 @@ body { font-family:Arial,sans-serif; background:var(--bg); color:var(--text); mi
 .flash-success { background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); }
 </style>
 </head>
-<body>
+<body class="auth-page" data-theme-persist="false">
+<div class="guest-theme-control">
+  {% include "_theme_picker.html" %}
+</div>
 <div class="card">
   <div class="logo">Fin<span>Flow</span> 🔐</div>
   <div class="small">Finish setting up two-factor authentication for <strong>{{ user.name }}</strong>. Open an authenticator app and enter the code shown below or use the secret key manually.</div>

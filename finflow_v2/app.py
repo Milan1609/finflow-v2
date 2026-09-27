@@ -20,6 +20,11 @@ from database_setup import initialize_database
 from security_utils import generate_2fa_secret, generate_totp_code, generate_qr_code_data_url, verify_totp_code, validate_password
 
 try:
+    from authlib.integrations.flask_client import OAuth
+except ImportError:
+    OAuth = None
+
+try:
     from PIL import Image, UnidentifiedImageError
 except Exception:
     Image = None
@@ -64,7 +69,7 @@ if IS_PRODUCTION and (not _secret_key or _secret_key == DEV_SECRET_KEY):
 DATABASE_URL = os.getenv('DATABASE_URL')
 if IS_PRODUCTION and not DATABASE_URL:
     fail_startup('Render configuration error: set DATABASE_URL to a PostgreSQL connection string before running FinFlow in production.')
-if DATABASE_URL:
+if DATABASE_URL and (IS_PRODUCTION or not DATABASE_URL.startswith('sqlite')):
     validate_database_url(DATABASE_URL)
 
 app.config['SECRET_KEY'] = _secret_key or DEV_SECRET_KEY
@@ -82,6 +87,30 @@ app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = False
 app.config['PREFERRED_URL_SCHEME'] = 'https' if IS_PRODUCTION else 'http'
+
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', '').strip()
+GOOGLE_AUTH_ENABLED = False
+google_oauth = None
+
+if GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET:
+    if not (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET):
+        if IS_PRODUCTION:
+            fail_startup('Google authentication requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.')
+    elif OAuth is None:
+        if IS_PRODUCTION:
+            fail_startup('Google authentication requires the Authlib package. Install dependencies from requirements.txt.')
+    else:
+        google_oauth = OAuth(app)
+        google_oauth.register(
+            name='google',
+            client_id=GOOGLE_CLIENT_ID,
+            client_secret=GOOGLE_CLIENT_SECRET,
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            client_kwargs={'scope': 'openid email profile'},
+        )
+        GOOGLE_AUTH_ENABLED = True
 
 SUPPORTED_CURRENCIES = {'INR','USD','EUR','GBP','AED','SAR','SGD','JPY','AUD','CAD'}
 ALLOWED_AVATAR_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -118,6 +147,7 @@ class User(BaseModel):
     email = db.Column(db.String(150), unique=True, nullable=False)
     mobile = db.Column(db.String(15))
     password_hash = db.Column(db.String(256), nullable=False)
+    google_subject = db.Column(db.String(255), unique=True)
     avatar = db.Column(db.String(200), default='')
     theme = db.Column(db.String(20), default='system')
     primary_currency = db.Column(db.String(10), default='INR')
@@ -269,6 +299,7 @@ def ensure_user_columns():
             ('last_login_at', 'DATETIME'),
             ('last_login_ip', 'VARCHAR(50)'),
             ('password_changed_at', 'DATETIME'),
+            ('google_subject', 'VARCHAR(255)'),
         ]:
             if column_name not in existing:
                 alter_commands.append(
@@ -576,6 +607,10 @@ def record_successful_login(user):
     db.session.commit()
 
 
+def google_email_is_verified(value):
+    return value is True or str(value).lower() == 'true'
+
+
 def save_avatar_upload(file_storage, user_id):
     if not file_storage or not file_storage.filename:
         return None
@@ -734,7 +769,8 @@ def inject_globals():
         except: pass
     return dict(notif_count=notif_count, notifs=notifs, user=user, enumerate=enumerate,
                 csrf_token=generate_csrf_token, csrf_field=csrf_field,
-                csp_nonce=getattr(g, 'csp_nonce', ''))
+                csp_nonce=getattr(g, 'csp_nonce', ''),
+                google_auth_enabled=GOOGLE_AUTH_ENABLED)
 
 @app.after_request
 def apply_security_headers(response):
@@ -904,6 +940,101 @@ def register():
         flash('Account created! Start by adding your accounts.', 'success')
         return redirect(url_for('dashboard'))
     return render_template('auth.html', mode='register')
+
+
+@app.route('/auth/google')
+def google_login():
+    if not GOOGLE_AUTH_ENABLED:
+        abort(404)
+    if rate_limited('google-login', 20, 15 * 60):
+        abort(429)
+    nonce = secrets.token_urlsafe(32)
+    session['google_oidc_nonce'] = nonce
+    redirect_uri = GOOGLE_REDIRECT_URI or url_for('google_callback', _external=True)
+    return google_oauth.google.authorize_redirect(redirect_uri, nonce=nonce)
+
+
+@app.route('/auth/google/callback')
+def google_callback():
+    if not GOOGLE_AUTH_ENABLED:
+        abort(404)
+
+    try:
+        token = google_oauth.google.authorize_access_token()
+        nonce = session.pop('google_oidc_nonce', None)
+        user_info = token.get('userinfo')
+        if not user_info:
+            user_info = google_oauth.google.parse_id_token(token, nonce=nonce)
+    except Exception:
+        app.logger.warning('Google OAuth callback failed.', exc_info=True)
+        flash('Google sign-in could not be completed. Please try again.', 'error')
+        return redirect(url_for('login'))
+
+    subject = clean_text(str(user_info.get('sub', '')), 255)
+    email = validate_email(user_info.get('email', ''))
+    if not subject or not email or not google_email_is_verified(user_info.get('email_verified')):
+        flash('Google did not provide a verified email address for this account.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(google_subject=subject).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if user and user.google_subject and user.google_subject != subject:
+            flash('This Google account cannot be linked to the selected FinFlow account.', 'error')
+            return redirect(url_for('login'))
+        if user:
+            user.google_subject = subject
+        else:
+            name = clean_text(user_info.get('name') or email.split('@', 1)[0], 100, required=True)
+            user = User(
+                name=name,
+                email=email,
+                google_subject=subject,
+                password_changed_at=utc_now(),
+            )
+            user.set_password(secrets.token_urlsafe(48))
+            db.session.add(user)
+        db.session.commit()
+
+    if not user.is_active:
+        flash('This account is unavailable. Please contact support.', 'error')
+        return redirect(url_for('login'))
+
+    if user.two_factor_enabled:
+        session.clear()
+        session['pending_google_user_id'] = user.id
+        return redirect(url_for('google_two_factor_verify'))
+
+    record_successful_login(user)
+    check_notifications(user.id)
+    flash(f'Welcome to FinFlow, {user.name}!', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/auth/google/verify', methods=['GET', 'POST'])
+def google_two_factor_verify():
+    user_id = session.get('pending_google_user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user or not user.is_active or not user.two_factor_enabled:
+        session.pop('pending_google_user_id', None)
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        if rate_limited(f'google-totp:{user.id}', 10, 10 * 60):
+            abort(429)
+        code = request.form.get('totp_code', '').strip()
+        if not verify_totp_code(user.two_factor_secret or '', code, window=1):
+            return render_template(
+                'auth.html',
+                mode='google_verify',
+                errors={'totp_code': 'The verification code is invalid.'},
+            )
+        record_successful_login(user)
+        check_notifications(user.id)
+        flash(f'Welcome back, {user.name}!', 'success')
+        return redirect(url_for('dashboard'))
+
+    return render_template('auth.html', mode='google_verify')
 
 @app.route('/2fa/setup', methods=['GET','POST'])
 def two_factor_setup():
@@ -1873,7 +2004,11 @@ def settings():
         abort(404)
     if request.method == 'POST':
         if 'theme' in request.form:
-            user.theme = request.form.get('theme', 'system')
+            theme = clean_text(request.form.get('theme'), 20)
+            if theme not in {'light', 'dark', 'system'}:
+                flash('Choose light, dark, or system default mode.', 'error')
+                return redirect(url_for('settings'))
+            user.theme = theme
             db.session.commit()
             flash('Settings saved!', 'success')
             return redirect(url_for('settings'))
@@ -1973,6 +2108,21 @@ def api_notif_count():
     uid = session['user_id']
     count = Notification.query.filter_by(user_id=uid, is_read=False).count()
     return jsonify({'count': count})
+
+
+@app.route('/api/theme', methods=['POST'])
+@login_required
+def api_theme():
+    payload = request.get_json(silent=True) or {}
+    theme = clean_text(payload.get('theme'), 20)
+    if theme not in {'light', 'dark', 'system'}:
+        abort(400, description='Invalid theme preference.')
+    user = User.query.get(session['user_id'])
+    if not user:
+        abort(404)
+    user.theme = theme
+    db.session.commit()
+    return jsonify({'theme': theme})
 
 # ─── INIT ─────────────────────────────────────────────────────────────────────
 

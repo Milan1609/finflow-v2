@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-theme-default="{{ user.theme if user else 'system' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -398,8 +398,10 @@ tr:hover td { background: var(--surface2); }
 }
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/finflow-refresh.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-switcher.css') }}">
+<script src="{{ url_for('static', filename='js/theme-controller.js') }}"></script>
 </head>
-<body class="{% if session.get('user_id') %}app-shell{% else %}public-shell{% endif %}">
+<body class="{% if session.get('user_id') %}app-shell{% else %}public-shell{% endif %}" data-theme-persist="{{ 'true' if session.get('user_id') else 'false' }}">
 {% if session.get('user_id') %}
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
@@ -468,12 +470,18 @@ tr:hover td { background: var(--surface2); }
 </nav>
 {% endif %}
 
+{% if not session.get('user_id') %}
+<div class="guest-theme-control">
+  {% include "_theme_picker.html" %}
+</div>
+{% endif %}
+
 <div class="main">
   {% if session.get('user_id') %}
   <div class="topbar">
     <div class="topbar-title">{% block page_title %}FinFlow{% endblock %}</div>
     <div class="topbar-right">
-      <button class="theme-toggle" id="themeToggleBtn" type="button" title="Toggle theme" aria-label="Toggle theme">☀️</button>
+      {% include "_theme_picker.html" %}
       <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()">
         🔔
         {% if notif_count is defined and notif_count > 0 %}
@@ -516,30 +524,8 @@ tr:hover td { background: var(--surface2); }
 
 <script type="application/json" id="csrfTokenData">{{ csrf_token()|tojson }}</script>
 <script nonce="{{ csp_nonce }}">
-// ── THEME ──
-const defaultTheme = '{{ user.theme if user else "light" }}';
-const savedTheme = localStorage.getItem('theme') || defaultTheme;
-function applyTheme(t) {
-  const th = t === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : t;
-  document.documentElement.setAttribute('data-theme', th);
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
-  if (themeToggleBtn) {
-    themeToggleBtn.textContent = th === 'dark' ? '☀️' : '🌙';
-    themeToggleBtn.title = th === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-  }
-}
-function toggleTheme() {
-  const current = localStorage.getItem('theme') || defaultTheme;
-  const next = current === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('theme', next);
-  applyTheme(next);
-}
 const csrfTokenData = document.getElementById('csrfTokenData');
 const CSRF_TOKEN = csrfTokenData ? JSON.parse(csrfTokenData.textContent || 'null') : null;
-applyTheme(savedTheme);
-document.getElementById('themeToggleBtn')?.addEventListener('click', toggleTheme);
 
 // ── EYE TOGGLE ──
 let balanceHidden = false;

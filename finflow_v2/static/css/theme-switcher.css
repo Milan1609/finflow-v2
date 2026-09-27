@@ -1,0 +1,97 @@
+.theme-picker {
+  position: relative;
+  z-index: 350;
+  color: var(--text);
+}
+
+.theme-picker summary { list-style: none; }
+.theme-picker summary::-webkit-details-marker { display: none; }
+
+.theme-picker-trigger {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.theme-picker-trigger:hover,
+.theme-picker[open] .theme-picker-trigger {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.theme-picker-chevron { color: var(--text2); transition: transform 0.2s ease; }
+.theme-picker[open] .theme-picker-chevron { transform: rotate(180deg); }
+
+.theme-picker-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 228px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.theme-picker-title {
+  display: block;
+  padding: 6px 8px 8px;
+  color: var(--text2);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-picker-menu button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 27px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.theme-picker-menu button:hover { background: var(--surface2); }
+.theme-picker-menu button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-glow);
+}
+
+.theme-picker-menu strong,
+.theme-picker-menu small { display: block; }
+.theme-picker-menu strong { font-size: 0.78rem; }
+.theme-picker-menu small { margin-top: 2px; color: var(--text2); font-size: 0.69rem; }
+
+.guest-theme-control {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 500;
+}
+
+@media (max-width: 560px) {
+  .theme-picker-label,
+  .theme-picker-chevron { display: none; }
+  .theme-picker-trigger { width: 38px; justify-content: center; padding: 0; }
+  .guest-theme-control { top: 12px; right: 12px; }
+}
