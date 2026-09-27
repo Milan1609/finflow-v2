@@ -136,6 +136,9 @@ CREATE TABLE IF NOT EXISTS password_reset (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE "user"
+ADD COLUMN IF NOT EXISTS google_subject VARCHAR(255);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email_casefold ON "user"(LOWER(email));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_google_subject ON "user"(google_subject) WHERE google_subject IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_mobile ON "user"(mobile) WHERE mobile IS NOT NULL AND mobile <> '';

@@ -1,7 +1,11 @@
 import sqlite3
 import unittest
+from pathlib import Path
 
 from database_setup import sqlite_programmability_sql
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class DatabaseFeatureTests(unittest.TestCase):
@@ -113,6 +117,15 @@ class DatabaseFeatureTests(unittest.TestCase):
                 ) VALUES (1, 1, 100, 'daily', 1, 3)
                 '''
             )
+
+    def test_postgresql_schema_upgrades_google_identity_before_creating_its_index(self):
+        schema = (PROJECT_ROOT / 'database' / 'postgresql' / '001_schema.sql').read_text(encoding='utf-8')
+        column_upgrade = 'ADD COLUMN IF NOT EXISTS google_subject VARCHAR(255);'
+        google_index = 'CREATE UNIQUE INDEX IF NOT EXISTS uq_user_google_subject'
+
+        self.assertIn(column_upgrade, schema)
+        self.assertIn(google_index, schema)
+        self.assertLess(schema.index(column_upgrade), schema.index(google_index))
 
 
 if __name__ == '__main__':
