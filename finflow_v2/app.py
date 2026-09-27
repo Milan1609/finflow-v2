@@ -977,6 +977,7 @@ def google_callback():
         return redirect(url_for('login'))
 
     user = User.query.filter_by(google_subject=subject).first()
+    created_from_google = False
     if not user:
         user = User.query.filter_by(email=email).first()
         if user and user.google_subject and user.google_subject != subject:
@@ -994,7 +995,11 @@ def google_callback():
             )
             user.set_password(secrets.token_urlsafe(48))
             db.session.add(user)
+            created_from_google = True
         db.session.commit()
+        if created_from_google:
+            log_audit('user', user.id, 'INSERT', new={'name': user.name, 'email': user.email, 'provider': 'google'})
+            db.session.commit()
 
     if not user.is_active:
         flash('This account is unavailable. Please contact support.', 'error')

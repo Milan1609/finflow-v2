@@ -121,6 +121,33 @@ gunicorn --bind 0.0.0.0:$PORT wsgi:app
 
 On Render, set `DATABASE_URL` to the complete **Internal Database URL** from the linked PostgreSQL service. It must include the username, password, host, port, and database name, for example `postgresql://username:password@dpg-example-a:5432/database`; a short host such as `dpg-example-a` by itself will fail startup validation.
 
+### Optional Google sign-in
+
+Google sign-in is disabled by default, so email/mobile and password login always work without any Google configuration. To offer a **Continue with Google** button:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create an OAuth client of type **Web application**.
+2. Add this exact authorized redirect URI, replacing the domain with your deployed FinFlow address:
+
+```text
+https://your-finflow-domain/auth/google/callback
+```
+
+3. Add these environment variables in your host dashboard. Do not commit the client secret.
+
+```text
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=https://your-finflow-domain/auth/google/callback
+```
+
+4. Redeploy the app. The Google button appears automatically on Login and Register once both credentials are present. Existing users with the same verified email are linked on their first Google sign-in; new users receive an account automatically. If a user has enabled FinFlow two-factor authentication, they must still enter their authenticator code after Google verifies their identity.
+
+Leave all three variables blank to keep Google sign-in hidden and optional.
+
+### Appearance modes
+
+Every FinFlow screen now offers **Light**, **Dark**, and **System default** appearance modes. Signed-in users can change the mode from the top-bar appearance menu or **Settings**; the preference is saved to their account. Visitors can choose a temporary preference that is stored only in their browser.
+
 ---
 
 ## ✅ Complete Feature List
@@ -132,6 +159,7 @@ On Render, set `DATABASE_URL` to the complete **Internal Database URL** from the
 ### 🔐 Authentication
 - Register with email + mobile
 - Login with email OR mobile number
+- Optional Google sign-in when the site owner configures Google OAuth
 - Secure password hashing
 - Session management
 

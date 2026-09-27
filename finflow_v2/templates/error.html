@@ -1,1 +1,14 @@
-Cannot overwrite variable Error because it is read-only or constant.
+{% extends "base.html" %}
+{% block title %}{{ status }} — FinFlow{% endblock %}
+{% block page_title %}Something needs attention{% endblock %}
+{% block content %}
+<section class="error-card">
+  <span class="error-card-code">{{ status }}</span>
+  <h1>Let's get you back on track.</h1>
+  <p>{{ message }}</p>
+  <div class="error-card-actions">
+    <a class="btn" href="{{ url_for('dashboard') if session.get('user_id') else url_for('home') }}">Return to safety</a>
+    {% if not session.get('user_id') %}<a class="btn btn-ghost" href="{{ url_for('login') }}">Sign in</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

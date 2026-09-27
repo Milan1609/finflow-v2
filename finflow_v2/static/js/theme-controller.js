@@ -54,6 +54,24 @@
     if (persist) persistTheme(safePreference);
   };
 
+  const closePicker = picker => {
+    picker.classList.remove('is-open');
+    picker.querySelector('[data-theme-picker-trigger]')?.setAttribute('aria-expanded', 'false');
+    const menu = picker.querySelector('.theme-picker-menu');
+    if (menu) menu.hidden = true;
+  };
+
+  const togglePicker = picker => {
+    if (!picker) return;
+    const menu = picker.querySelector('.theme-picker-menu');
+    const isOpen = !picker.classList.contains('is-open');
+    document.querySelectorAll('[data-theme-picker]').forEach(closePicker);
+    if (!isOpen) return;
+    picker.classList.add('is-open');
+    picker.querySelector('[data-theme-picker-trigger]')?.setAttribute('aria-expanded', 'true');
+    if (menu) menu.hidden = false;
+  };
+
   const initialize = () => {
     const isSignedIn = document.body.dataset.themePersist === 'true';
     const preference = isSignedIn ? getDefaultTheme() : getPreference();
@@ -63,8 +81,25 @@
     document.querySelectorAll('[data-theme-option]').forEach(button => {
       button.addEventListener('click', () => {
         setTheme(button.dataset.themeOption);
-        button.closest('[data-theme-picker]')?.removeAttribute('open');
+        const picker = button.closest('[data-theme-picker]');
+        if (picker) closePicker(picker);
       });
+    });
+
+    document.querySelectorAll('[data-theme-picker-trigger]').forEach(button => {
+      button.addEventListener('click', () => togglePicker(button.closest('[data-theme-picker]')));
+    });
+
+    document.addEventListener('click', event => {
+      if (!event.target.closest('[data-theme-picker]')) {
+        document.querySelectorAll('[data-theme-picker]').forEach(closePicker);
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        document.querySelectorAll('[data-theme-picker]').forEach(closePicker);
+      }
     });
   };
 

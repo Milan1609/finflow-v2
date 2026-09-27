@@ -165,14 +165,9 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
-// Apply theme immediately on change
 document.querySelectorAll('input[name="theme"]').forEach(radio => {
   radio.addEventListener('change', function() {
-    const theme = this.value === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : this.value;
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', this.value);
+    window.FinFlowTheme?.setTheme(this.value, false);
   });
 });
 </script>
