@@ -10,7 +10,14 @@
 :root[data-theme="light"] { --bg:#f0f4fb; --surface:#ffffff; --border:#dde3f0; --text:#1a2340; --text2:#556080; --accent:#2563eb; --error:#dc2626; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
-.auth-wrap { width:100%; max-width:420px; padding:20px; }
+.auth-wrap { position:relative; width:100%; max-width:420px; padding:20px; }
+.theme-toggle {
+  position:absolute; top:10px; right:10px; z-index:2;
+  width:38px; height:38px; border-radius:10px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); cursor:pointer; font-size:1rem;
+  display:flex; align-items:center; justify-content:center; transition:all 0.2s ease;
+}
+.theme-toggle:hover { border-color:var(--accent); color:var(--accent); }
 .logo-area { text-align:center; margin-bottom:28px; }
 .logo { font-size:1.6rem; font-weight:800; letter-spacing:-0.5px; }
 .logo span { color:var(--accent); }
@@ -40,6 +47,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:v
 </head>
 <body class="auth-page">
 <div class="auth-wrap">
+  <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle theme">☀️</button>
   <div class="logo-area">
     <div class="logo">Fin<span>Flow</span> 💸</div>
     <div class="logo-sub">Your personal finance command centre</div>
@@ -133,8 +141,26 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:v
   <div class="back-link"><a href="{{ url_for('home') }}">← Back to Home</a></div>
 </div>
 <script nonce="{{ csp_nonce }}">
-const t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-document.documentElement.setAttribute('data-theme', t);
+const defaultTheme = 'system';
+function applyTheme(theme) {
+  const resolved = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+  document.documentElement.setAttribute('data-theme', resolved);
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.textContent = resolved === 'dark' ? '☀️' : '🌙';
+    btn.title = resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+const savedTheme = localStorage.getItem('theme') || defaultTheme;
+applyTheme(savedTheme);
+document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+});
 </script>
 </body>
 </html>

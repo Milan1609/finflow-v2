@@ -7,9 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root { --accent:#3b82f6; --income:#10b981; --expense:#ef4444; --surface:#0f1623; --surface2:#141d2e; --border:#1e2d45; --text:#e2eaf8; --text2:#8ea4c8; }
+:root {
+  --accent:#3b82f6; --income:#10b981; --expense:#ef4444;
+  --bg:#080c14; --surface:#0f1623; --surface2:#141d2e; --surface3:#1a2438; --border:#1e2d45; --text:#e2eaf8; --text2:#8ea4c8;
+}
+:root[data-theme="light"] {
+  --bg:#f0f4fb; --surface:#ffffff; --surface2:#f8faff; --surface3:#eef2fb; --border:#dde3f0; --text:#1a2340; --text2:#556080;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Plus Jakarta Sans',sans-serif; background:#080c14; color:#e2eaf8; overflow-x:hidden; }
+body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
 a { color: var(--accent); text-decoration: none; }
 
 .navbar {
@@ -18,14 +24,25 @@ a { color: var(--accent); text-decoration: none; }
   background: rgba(8,12,20,0.72); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 100;
 }
+:root[data-theme="light"] .navbar {
+  background: rgba(255,255,255,0.7);
+  border-bottom: 1px solid rgba(17,24,39,0.08);
+}
 .navbar-logo { font-size:1.3rem; font-weight:800; letter-spacing:-0.5px; }
 .navbar-logo span { color: var(--accent); }
 .navbar-links { display:flex; gap:20px; align-items:center; }
-.navbar-links a { color:#8ea4c8; font-size:0.88rem; font-weight:500; transition:color 0.2s; }
-.navbar-links a:hover { color:#e2eaf8; }
+.navbar-links a { color:var(--text2); font-size:0.88rem; font-weight:500; transition:color 0.2s; }
+.navbar-links a:hover { color:var(--text); }
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 10px; border:1px solid var(--border); background: rgba(255,255,255,0.04);
+  color: var(--text); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:1rem; transition:all 0.2s ease;
+}
+:root[data-theme="light"] .theme-toggle { background: rgba(255,255,255,0.7); }
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .btn-nav { background: var(--accent); color:#fff; padding:8px 18px; border-radius:999px; font-weight:700; font-size:0.85rem; transition:all 0.2s; }
 .btn-nav:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 10px 24px rgba(59,130,246,0.24); }
-.btn-nav-ghost { background: rgba(255,255,255,0.05); color:#e2eaf8; padding:8px 18px; border-radius:999px; font-weight:600; font-size:0.85rem; border:1px solid rgba(255,255,255,0.1); }
+.btn-nav-ghost { background: rgba(255,255,255,0.05); color:var(--text); padding:8px 18px; border-radius:999px; font-weight:600; font-size:0.85rem; border:1px solid var(--border); }
+:root[data-theme="light"] .btn-nav-ghost { background: rgba(255,255,255,0.78); }
 
 .hero {
   min-height: 100vh; padding: 120px 24px 70px; display:flex; align-items:center; justify-content:center;
@@ -164,6 +181,7 @@ a { color: var(--accent); text-decoration: none; }
 <nav class="navbar">
   <div class="navbar-logo">Fin<span>Flow</span> 💸</div>
   <div class="navbar-links">
+    <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle theme">☀️</button>
     <a href="#features">Features</a>
     <a href="#how-to-use">How To Use</a>
     <a href="#contact">Contact</a>
@@ -277,8 +295,25 @@ a { color: var(--accent); text-decoration: none; }
   <p>© 2026 FinFlow · Built with ❤️ for Indian finance by MD · <a href="{{ url_for('register') }}">Get Started Free</a></p>
 </footer>
 <script nonce="{{ csp_nonce }}">
-const t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-document.documentElement.setAttribute('data-theme', t);
+function applyTheme(theme) {
+  const resolved = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+  document.documentElement.setAttribute('data-theme', resolved);
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.textContent = resolved === 'dark' ? '☀️' : '🌙';
+    btn.title = resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+const savedTheme = localStorage.getItem('theme') || 'system';
+applyTheme(savedTheme);
+document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+});
 </script>
 </body>
 </html>
