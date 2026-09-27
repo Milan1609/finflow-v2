@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -517,7 +517,7 @@ tr:hover td { background: var(--surface2); }
 <script type="application/json" id="csrfTokenData">{{ csrf_token()|tojson }}</script>
 <script nonce="{{ csp_nonce }}">
 // ── THEME ──
-const defaultTheme = '{{ user.theme if user else "system" }}';
+const defaultTheme = '{{ user.theme if user else "light" }}';
 const savedTheme = localStorage.getItem('theme') || defaultTheme;
 function applyTheme(t) {
   const th = t === 'system'

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -141,7 +141,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:v
   <div class="back-link"><a href="{{ url_for('home') }}">← Back to Home</a></div>
 </div>
 <script nonce="{{ csp_nonce }}">
-const defaultTheme = 'system';
+const defaultTheme = 'light';
 function applyTheme(theme) {
   const resolved = theme === 'system'
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
