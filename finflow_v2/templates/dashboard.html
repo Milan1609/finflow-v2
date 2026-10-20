@@ -6,24 +6,22 @@
 .fw600 { font-weight: 600; }
 </style>
 
-<div class="flex jc-between ai-center mb-3">
-  <div>
-    <div class="page-title">
-      Welcome back, {{ user.name.split()[0] if user else 'User' }}! 👋
-    </div>
-    <div class="muted">{{ today.strftime('%A, %d %B %Y') }}</div>
+<section class="dashboard-welcome" aria-labelledby="dashboardWelcomeTitle">
+  <div class="dashboard-welcome-copy">
+    <div class="dashboard-kicker">YOUR FINANCIAL OVERVIEW</div>
+    <h1 id="dashboardWelcomeTitle">Welcome back, {{ user.name.split()[0] if user else 'User' }}</h1>
+    <p>Your money at a glance. Make today a little more intentional.</p>
+    <div class="dashboard-date"><span aria-hidden="true">◷</span>{{ today.strftime('%A, %d %B %Y') }}</div>
   </div>
-  <div class="flex gap-2">
-    <button
-    class="btn btn-ghost btn-sm balance-toggle"
-    onclick="toggleBalance()"
->
-    <span id="eyeIcon">👁️</span>
-    <span id="eyeText">Hide Balances</span>
-</button>
-    <a href="{{ url_for('add_transaction') }}" class="btn btn-primary">+ Add Transaction</a>
+  <div class="dashboard-actions">
+    <button class="btn btn-ghost balance-toggle" type="button" onclick="toggleBalance()" aria-pressed="false">
+      <span id="eyeIcon" aria-hidden="true">◉</span>
+      <span id="eyeText">Hide balances</span>
+    </button>
+    <a href="{{ url_for('add_transaction') }}" class="btn btn-primary"><span aria-hidden="true">＋</span> Record transaction</a>
+    <a href="{{ url_for('add_account') }}" class="btn btn-outline"><span aria-hidden="true">＋</span> Add account</a>
   </div>
-</div>
+</section>
 
 <!--
 <form method="get" class="card filter-card mb-3">
@@ -60,13 +58,18 @@
   </div>
 </form>  
 -->
-<form method="get" class="card dashboard-filter mb-3">
+<form method="get" class="card dashboard-filter mb-3" aria-label="Filter dashboard data">
+  <div class="filter-heading">
+    <div class="filter-heading-icon" aria-hidden="true">⌕</div>
+    <div><strong>Find a view</strong><span>Filter totals and activity</span></div>
+  </div>
   <div class="filter-row">
 
     <input
-      type="text"
+      type="search"
       name="search"
-      placeholder="🔍 Search category..."
+      value="{{ request.args.get('search', '') }}"
+      placeholder="Search categories"
       class="input filter-search"
     >
 
@@ -101,47 +104,49 @@
       {% endfor %}
     </select>
 
-    <button type="submit" class="btn btn-primary">🔍 Apply Filters</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">✖ Reset Filters</a>
+    <button type="submit" class="btn btn-primary">Apply filters</button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Reset</a>
 
   </div>
 
 </form>
 
-<!-- Stat Cards -->
-<div class="g g4 mb-3">
+<section class="dashboard-stats g g4 mb-3" aria-label="Financial summary">
   <div class="stat-card stat-balance balance-container">
-    <div class="stat-label">Total Balance</div>
+    <div class="stat-heading"><span class="stat-icon" aria-hidden="true">₹</span><span class="stat-label">Total balance</span></div>
     <div class="stat-value balance-val mono">₹{{ "{:,.0f}".format(total_balance) }}</div>
-    <div class="muted mt-1">{{ accounts|length }} account{{ 's' if accounts|length != 1 else '' }}</div>
+    <div class="stat-footnote">Across {{ accounts|length }} account{{ 's' if accounts|length != 1 else '' }}</div>
   </div>
   <div class="stat-card stat-income">
-    <div class="stat-label">This Month Income</div>
+    <div class="stat-heading"><span class="stat-icon" aria-hidden="true">↗</span><span class="stat-label">Income this month</span></div>
     <div class="stat-value text-income mono">₹{{ "{:,.0f}".format(income) }}</div>
+    <div class="stat-footnote">Money received</div>
   </div>
   <div class="stat-card stat-expense">
-    <div class="stat-label">This Month Expense</div>
+    <div class="stat-heading"><span class="stat-icon" aria-hidden="true">↘</span><span class="stat-label">Expenses this month</span></div>
     <div class="stat-value text-expense mono">₹{{ "{:,.0f}".format(expense) }}</div>
+    <div class="stat-footnote">Money spent</div>
   </div>
   <div class="stat-card stat-savings">
-    <div class="stat-label">Net Savings</div>
+    <div class="stat-heading"><span class="stat-icon" aria-hidden="true">◎</span><span class="stat-label">Net savings</span></div>
     <div class="stat-value mono {{ 'text-income' if savings >= 0 else 'text-expense' }}">
       ₹{{ "{:,.0f}".format(savings) }}
     </div>
+    <div class="stat-footnote">Income minus expenses</div>
   </div>
-</div>
+</section>
 
 <!-- Chart + Upcoming -->
 <div class="g g21 mb-3">
   <div class="card">
-    <div class="section-head">7-Day Overview</div>
+    <div class="panel-heading"><div><h2>7-day overview</h2><p>Income and spending activity</p></div><span class="panel-tag">ACTIVITY</span></div>
     <div class="chart-container">
       <canvas id="dailyChart"></canvas>
     </div>
   </div>
 
   <div class="card">
-    <div class="section-head">Upcoming Payments</div>
+    <div class="panel-heading"><div><h2>Upcoming payments</h2><p>Keep an eye on what is due</p></div><a href="{{ url_for('schedules') }}" class="panel-link">View all</a></div>
     {% if schedules_due %}
       {% for s in schedules_due %}
         {% set days = (s.next_due - today).days %}
@@ -172,26 +177,26 @@
 
 <!-- Visual Analytics -->
 <div class="mb-3">
-  <div class="section-head mb-3">📉 Visual Analytics</div>
+  <div class="dashboard-section-heading"><div class="dashboard-kicker">SPENDING INSIGHTS</div><h2>Understand your activity</h2><p>A closer look at where your money moves.</p></div>
 
   <!-- Category Charts -->
   <div class="g g3 mb-3">
     <div class="card">
-      <div class="section-head">Category-wise Distribution</div>
+      <div class="panel-heading panel-heading-compact"><div><h2>By category</h2><p>Transaction distribution</p></div></div>
       <div class="chart-container">
         <canvas id="categoryChart"></canvas>
       </div>
     </div>
 
     <div class="card">
-      <div class="section-head">Subcategory Breakdown</div>
+      <div class="panel-heading panel-heading-compact"><div><h2>By subcategory</h2><p>Spending detail</p></div></div>
       <div class="chart-container">
         <canvas id="subcategoryChart"></canvas>
       </div>
     </div>
 
     <div class="card">
-      <div class="section-head">Analytics Table</div>
+      <div class="panel-heading panel-heading-compact"><div><h2>Category totals</h2><p>Ranked by activity</p></div></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -214,7 +219,7 @@
 <div class="g g12 mb-3">
   <div class="card">
     <div class="flex jc-between ai-center mb-2">
-      <div class="section-head section-head-no-margin">Accounts</div>
+      <div class="dashboard-card-title"><div><h2>Accounts</h2><p>Your connected balances</p></div></div>
       <a href="{{ url_for('accounts') }}" class="btn btn-ghost btn-sm">View All</a>
     </div>
     {% if accounts %}
@@ -240,7 +245,7 @@
 
   <div class="card">
     <div class="flex jc-between ai-center mb-2">
-      <div class="section-head section-head-no-margin">Recent Transactions</div>
+      <div class="dashboard-card-title"><div><h2>Recent transactions</h2><p>Your latest money activity</p></div></div>
       <a href="{{ url_for('transactions') }}" class="btn btn-ghost btn-sm">View All</a>
     </div>
     {% if recent %}
@@ -272,6 +277,10 @@ const categoryData = '{{ category_data | tojson | safe }}';
 const categoryStats = JSON.parse(categoryData);
 const subcategoryData = '{{ subcategory_data | tojson | safe }}';
 const subcategoryStats = JSON.parse(subcategoryData);
+const chartStyles = getComputedStyle(document.documentElement);
+const chartTextColor = chartStyles.getPropertyValue('--text2').trim() || '#8ea4c8';
+const chartGridColor = chartStyles.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.08)';
+const chartSurfaceColor = chartStyles.getPropertyValue('--surface').trim() || '#111713';
 
 // Daily Chart
 const ctx = document.getElementById('dailyChart');
@@ -289,17 +298,17 @@ if (ctx) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#8ea4c8', font: { family: 'Plus Jakarta Sans' }, boxRadius: 4 } } },
+        plugins: { legend: { labels: { color: chartTextColor, font: { family: 'Plus Jakarta Sans' }, boxRadius: 4 } } },
         scales: {
-          x: { ticks: { color: '#8ea4c8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-          y: { ticks: { color: '#8ea4c8', callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: 'rgba(255,255,255,0.04)' } }
+          x: { ticks: { color: chartTextColor }, grid: { color: chartGridColor } },
+          y: { ticks: { color: chartTextColor, callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: chartGridColor } }
         }
       }
     });
   } catch (e) {
     console.error('Chart.js error:', e);
     ctx.style.display = 'none';
-    ctx.parentElement.innerHTML += '<div style="text-align:center;padding:20px;color:#8ea4c8;">Chart unavailable</div>';
+    ctx.parentElement.innerHTML += '<div class="chart-empty-note">Chart unavailable</div>';
   }
 }
 
@@ -315,7 +324,7 @@ if (categoryCtx && categoryStats.length > 0) {
         data: categoryStats.map(c => c.total),
         backgroundColor: colors.slice(0, categoryStats.length),
         borderWidth: 2,
-        borderColor: 'var(--surface)'
+        borderColor: chartSurfaceColor
       }]
     },
     options: {
@@ -323,7 +332,7 @@ if (categoryCtx && categoryStats.length > 0) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          labels: { color: '#8ea4c8', font: { family: 'Plus Jakarta Sans', size: 12 } },
+          labels: { color: chartTextColor, font: { family: 'Plus Jakarta Sans', size: 12 } },
           position: 'bottom'
         },
         tooltip: {
@@ -338,7 +347,7 @@ if (categoryCtx && categoryStats.length > 0) {
   });
 } else if (categoryCtx) {
   categoryCtx.style.display = 'none';
-  categoryCtx.parentElement.innerHTML += '<div style="text-align:center;padding:20px;color:#8ea4c8;">No category data available</div>';
+  categoryCtx.parentElement.innerHTML += '<div class="chart-empty-note">No category data available</div>';
 }
 
 // Subcategory Pie Chart
@@ -353,7 +362,7 @@ if (subcategoryCtx && subcategoryStats.length > 0) {
         data: subcategoryStats.map(s => s.total),
         backgroundColor: colors.slice(0, subcategoryStats.length),
         borderWidth: 2,
-        borderColor: 'var(--surface)'
+        borderColor: chartSurfaceColor
       }]
     },
     options: {
@@ -361,7 +370,7 @@ if (subcategoryCtx && subcategoryStats.length > 0) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          labels: { color: '#8ea4c8', font: { family: 'Plus Jakarta Sans', size: 11 } },
+          labels: { color: chartTextColor, font: { family: 'Plus Jakarta Sans', size: 11 } },
           position: 'bottom',
           maxHeight: 100
         },
@@ -378,7 +387,7 @@ if (subcategoryCtx && subcategoryStats.length > 0) {
   });
 } else if (subcategoryCtx) {
   subcategoryCtx.style.display = 'none';
-  subcategoryCtx.parentElement.innerHTML += '<div style="text-align:center;padding:20px;color:#8ea4c8;">No subcategory data available</div>';
+  subcategoryCtx.parentElement.innerHTML += '<div class="chart-empty-note">No subcategory data available</div>';
 }
 
 // Analytics Table
@@ -394,7 +403,7 @@ if (tableBody && subcategoryStats.length > 0) {
     tableBody.appendChild(row);
   });
 } else if (tableBody) {
-  tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#8ea4c8;">No transaction data available</td></tr>';
+  tableBody.innerHTML = '<tr><td colspan="3" class="chart-empty-note">No transaction data available</td></tr>';
 }
 </script>
 {% endblock %}
