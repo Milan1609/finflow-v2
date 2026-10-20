@@ -94,23 +94,20 @@ GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', '').strip()
 GOOGLE_AUTH_ENABLED = False
 google_oauth = None
 
-if GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET:
-    if not (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET):
-        if IS_PRODUCTION:
-            fail_startup('Google authentication requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.')
-    elif OAuth is None:
-        if IS_PRODUCTION:
-            fail_startup('Google authentication requires the Authlib package. Install dependencies from requirements.txt.')
-    else:
-        google_oauth = OAuth(app)
-        google_oauth.register(
-            name='google',
-            client_id=GOOGLE_CLIENT_ID,
-            client_secret=GOOGLE_CLIENT_SECRET,
-            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-            client_kwargs={'scope': 'openid email profile'},
-        )
-        GOOGLE_AUTH_ENABLED = True
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and OAuth is not None:
+    google_oauth = OAuth(app)
+    google_oauth.register(
+        name='google',
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={'scope': 'openid email profile'},
+    )
+    GOOGLE_AUTH_ENABLED = True
+elif GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET:
+    app.logger.warning(
+        'Google sign-in is disabled. Configure both Google credentials and install Authlib to enable it.'
+    )
 
 SUPPORTED_CURRENCIES = {'INR','USD','EUR','GBP','AED','SAR','SGD','JPY','AUD','CAD'}
 ALLOWED_AVATAR_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}

@@ -6,8 +6,25 @@
 
   const getDefaultTheme = () => document.documentElement.dataset.themeDefault || 'system';
 
+  const getStoredTheme = () => {
+    try {
+      return localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey);
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const storeTheme = preference => {
+    try {
+      localStorage.setItem(storageKey, preference);
+      localStorage.removeItem(legacyStorageKey);
+    } catch (_) {
+      return;
+    }
+  };
+
   const getPreference = () => {
-    const storedTheme = localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey);
+    const storedTheme = getStoredTheme();
     return validThemes.has(storedTheme) ? storedTheme : getDefaultTheme();
   };
 
@@ -35,21 +52,28 @@
   const persistTheme = preference => {
     if (document.body.dataset.themePersist !== 'true') return;
     const csrfTokenElement = document.getElementById('csrfTokenData');
-    const csrfToken = csrfTokenElement ? JSON.parse(csrfTokenElement.textContent || 'null') : null;
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    if (csrfTokenElement) {
+      try {
+        csrfToken = JSON.parse(csrfTokenElement.textContent || 'null') || csrfToken;
+      } catch (_) {
+        csrfToken = csrfToken || '';
+      }
+    }
     fetch('/api/theme', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken || '',
+        'X-CSRF-Token': csrfToken,
       },
       body: JSON.stringify({ theme: preference }),
+      keepalive: true,
     }).catch(() => undefined);
   };
 
   const setTheme = (preference, persist = true) => {
     const safePreference = validThemes.has(preference) ? preference : 'system';
-    localStorage.setItem(storageKey, safePreference);
-    localStorage.removeItem(legacyStorageKey);
+    storeTheme(safePreference);
     applyTheme(safePreference);
     if (persist) persistTheme(safePreference);
   };
@@ -75,7 +99,7 @@
   const initialize = () => {
     const isSignedIn = document.body.dataset.themePersist === 'true';
     const preference = isSignedIn ? getDefaultTheme() : getPreference();
-    if (isSignedIn) localStorage.setItem(storageKey, preference);
+    if (isSignedIn) storeTheme(preference);
     applyTheme(preference);
 
     document.querySelectorAll('[data-theme-option]').forEach(button => {
@@ -103,9 +127,11 @@
     });
   };
 
-  mediaQuery.addEventListener?.('change', () => {
+  const refreshSystemTheme = () => {
     if (document.documentElement.dataset.themePreference === 'system') applyTheme('system');
-  });
+  };
+  if (mediaQuery.addEventListener) mediaQuery.addEventListener('change', refreshSystemTheme);
+  else mediaQuery.addListener?.(refreshSystemTheme);
 
   window.FinFlowTheme = { applyTheme, getPreference, setTheme };
   document.addEventListener('DOMContentLoaded', initialize);
